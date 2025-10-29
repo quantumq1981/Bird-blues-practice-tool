@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Bird Blues & Bird Tunes Trainer v2.1</title>
+<title>Bird Blues & Bird Tunes Trainer v3.0</title>
 <style>
 :root {
   --bg:#121212;--panel:#1a1a1a;--ink:#eee;--ink-dim:#aaa;
@@ -28,7 +28,6 @@ h1{text-align:center;color:var(--accent);margin:16px 0;}
 .chord{font-size:22px;font-weight:bold;color:var(--sym);}
 .roman{font-size:12px;color:var(--ink-dim);}
 .analysis{font-size:10px;color:#90caf9;margin-top:3px;display:none;}
-.bebop{font-size:11px;color:#90caf9;opacity:.9;margin-top:4px;}
 .legend{text-align:center;color:#ccc;font-size:12px;margin-bottom:10px;}
 .fretboard-section{display:none;background:#1a1a1a;border:2px solid var(--accent);border-radius:8px;
   padding:20px;max-width:1100px;margin:30px auto;}
@@ -50,15 +49,15 @@ h1{text-align:center;color:var(--accent);margin:16px 0;}
 </style>
 </head>
 <body>
-<h1>🎶 Bird Blues & Bird Tunes Trainer v2.1</h1>
+<h1>🎶 Bird Blues & Bird Tunes Trainer v3.0</h1>
 
 <div class="controls">
   <label for="tuneSel">Tune:</label>
-  <select id="tuneSel" aria-label="Select tune"></select>
+  <select id="tuneSel"></select>
   <button id="randomTune">Random Bird Tune</button>
 
   <label for="keySel">Key:</label>
-  <select id="keySel" aria-label="Select key">
+  <select id="keySel">
     <option>C</option><option>F</option><option>Bb</option><option>Eb</option>
     <option>Ab</option><option>Db</option><option>Gb</option><option>B</option>
     <option>E</option><option>A</option><option>D</option><option>G</option><option>F#</option>
@@ -66,11 +65,11 @@ h1{text-align:center;color:var(--accent);margin:16px 0;}
 
   <button id="generateBtn">Generate Lead Sheet</button>
   <button id="toggleMode" class="btn-secondary">Switch to Scale Mode</button>
-  <button id="toggleAnalysis" class="btn-secondary">Show Analysis Overlay</button>
-  <button id="printBtn" class="btn-secondary">Print Lead Sheet</button>
+  <button id="toggleAnalysis" class="btn-secondary">Show Analysis</button>
+  <button id="printBtn" class="btn-secondary">Print</button>
 </div>
 
-<div class="legend">Click a bar to hear its root and view chord tones or scale across the fretboard.</div>
+<div class="legend">Click a bar to hear its root and view chord tones or scales on the fretboard.</div>
 
 <div id="sheet" class="sheet"></div>
 <div id="info" class="info"></div>
@@ -78,435 +77,137 @@ h1{text-align:center;color:var(--accent);margin:16px 0;}
 <div class="fretboard-section" id="fretboard-section">
   <div class="fretboard-title" id="fretboard-title">Select a chord to view</div>
   <div class="fretboard" id="fretboard"></div>
-</div>  
+</div>
+
 <script>
 /* ================================
    CORE DATA
 ==================================*/
-const chromaticSharp = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
-const chromaticFlat  = ['C','Db','D','Eb','E','F','Gb','G','Ab','A','Bb','B'];
-const flatKeys = ['F','Bb','Eb','Ab','Db','Gb','Cb'];
+const chromaticSharp=['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+const chromaticFlat=['C','Db','D','Eb','E','F','Gb','G','Ab','A','Bb','B'];
+const flatKeys=['F','Bb','Eb','Ab','Db','Gb','Cb'];
 
-/* Normalized index mapping for all enharmonics */
-const NOTE_INDEX = {
-  'C':0, 'B#':0,
-  'C#':1, 'Db':1,
-  'D':2,
-  'D#':3, 'Eb':3,
-  'E':4, 'Fb':4,
-  'F':5, 'E#':5,
-  'F#':6, 'Gb':6,
-  'G':7,
-  'G#':8, 'Ab':8,
-  'A':9,
-  'A#':10,'Bb':10,
-  'B':11,'Cb':11
+const NOTE_INDEX={
+ 'C':0,'B#':0,'C#':1,'Db':1,'D':2,'D#':3,'Eb':3,'E':4,'Fb':4,
+ 'F':5,'E#':5,'F#':6,'Gb':6,'G':7,'G#':8,'Ab':8,'A':9,
+ 'A#':10,'Bb':10,'B':11,'Cb':11
 };
-function indexToNote(i, key) {
-  const useFlats = flatKeys.includes(key);
-  const arr = useFlats ? chromaticFlat : chromaticSharp;
-  return arr[(i % 12 + 12) % 12];
+function indexToNote(i,key){
+  const useFlats=flatKeys.includes(key);
+  const arr=useFlats?chromaticFlat:chromaticSharp;
+  return arr[(i%12+12)%12];
 }
-function useFlatsForKey(k){ return flatKeys.includes(k); }
 
 /* --- interval colour map --- */
-const intervalColors = {
-  'R':'#ff9800','♭2':'#00bcd4','2':'#4caf50','♯2':'#26c6da',
-  '♭3':'#00acc1','3':'#2196f3','4':'#9c27b0','♯4':'#ab47bc',
-  '5':'#f44336','♯5':'#e57373','♭6':'#e57373','6':'#fafafa',
-  '♭7':'#fbc02d','7':'#fff59d','9':'#4caf50','11':'#9c27b0','13':'#e0e0e0'
+const intervalColors={
+ 'R':'#ff9800','♭2':'#00bcd4','2':'#4caf50','♯2':'#26c6da',
+ '♭3':'#00acc1','3':'#2196f3','4':'#9c27b0','♯4':'#ab47bc',
+ '5':'#f44336','♯5':'#e57373','♭6':'#e57373','6':'#fafafa',
+ '♭7':'#fbc02d','7':'#fff59d','9':'#4caf50','11':'#9c27b0','13':'#e0e0e0'
 };
-const intervalNames = {0:'R',1:'♭2',2:'2',3:'♭3',4:'3',5:'4',6:'♯4',7:'5',8:'♭6',9:'6',10:'♭7',11:'7'};
+const intervalNames={0:'R',1:'♭2',2:'2',3:'♭3',4:'3',5:'4',6:'♯4',7:'5',8:'♭6',9:'6',10:'♭7',11:'7'};
 
-/* --- modes & scale patterns (semitone intervals) --- */
-const modePatterns = {
-  'Ionian':[0,2,4,5,7,9,11],
-  'Dorian':[0,2,3,5,7,9,10],
-  'Phrygian':[0,1,3,5,7,8,10],
-  'Lydian':[0,2,4,6,7,9,11],
-  'Mixolydian':[0,2,4,5,7,9,10],
-  'Aeolian':[0,2,3,5,7,8,10],
-  'Locrian':[0,1,3,5,6,8,10],
-  'Major Bebop':[0,2,4,5,7,8,9,11],
-  'Dominant Bebop':[0,2,4,5,7,9,10,11],
-  'Minor Bebop':[0,2,3,5,7,8,10,11]
+/* --- modes --- */
+const modePatterns={
+ 'Ionian':[0,2,4,5,7,9,11],
+ 'Dorian':[0,2,3,5,7,9,10],
+ 'Phrygian':[0,1,3,5,7,8,10],
+ 'Lydian':[0,2,4,6,7,9,11],
+ 'Mixolydian':[0,2,4,5,7,9,10],
+ 'Aeolian':[0,2,3,5,7,8,10],
+ 'Locrian':[0,1,3,5,6,8,10],
+ 'Major Bebop':[0,2,4,5,7,8,9,11],
+ 'Dominant Bebop':[0,2,4,5,7,9,10,11],
+ 'Minor Bebop':[0,2,3,5,7,8,10,11]
 };
 
-/* --- Bird Blues + tunes (roman or letter symbols) --- */
-const birdTunes = {
-  "Bird Blues": [
-    ["IΔ7","vi7","ii7","V7"],
-    ["IΔ7","IV7","I7","bII7"],
-    ["ii7","V7","IΔ7","V7"]
-  ],
-  "Blues for Alice": [
-    ["Fmaj7","Em7b5","A7","Dm7"],
-    ["Gm7","C7","F7","Bb7"],
-    ["Bbm7","Eb7","Am7","D7"]
-  ],
-  "Now's the Time": [
-    ["I7","IV7","I7","I7"],
-    ["IV7","IV7","I7","VI7"],
-    ["II7","V7","I7","I7"]
-  ],
-  "Anthropology": [
-    ["IΔ7","vi7","ii7","V7"],
-    ["III7","VI7","II7","V7"],
-    ["IΔ7","III7","VI7","II7"]
-  ],
-  "Ornithology": [
-    ["Gm7","C7","FΔ7","A7"],
-    ["Dm7","G7","CMaj7","F7"],
-    ["Bm7b5","E7","Am7","D7"]
-  ],
-  "Donna Lee": [
-    ["AbΔ7","G7","Cm7","F7"],
-    ["Bb7","EbΔ7","A7","D7"],
-    ["Gm7","C7","F7","Bb7"]
-  ]
-});
-  /* --- Extended Parker Tunes from Tune Book --- */
-Object.assign(birdTunes, {
-  "Au Privave": [
-    ["F7","Bb7","F7","F7"],
-    ["Bb7","Bdim7","F7","D7"],
-    ["Gm7","C7","F7","C7"]
-  ],
-  "Barbados": [
-    ["F7","Bb7","F7","F7"],
-    ["Bb7","Bbm7","F7","D7"],
-    ["Gm7","C7","F7","C7"]
-  ],
-  "Bloomdido": [
-    ["Bb7","Eb7","Bb7","Bb7"],
-    ["Eb7","E°7","Bb7","G7"],
-    ["C7","F7","Bb7","Bb7"]
-  ],
-  "Chi Chi": [
-    ["F7","Bb7","F7","F7"],
-    ["Bb7","Bdim7","F7","D7"],
-    ["Gm7","C7","F7","F7"]
-  ],
-  "Cool Blues": [
-    ["Bb7","Eb7","Bb7","Bb7"],
-    ["Eb7","E°7","Bb7","G7"],
-    ["C7","F7","Bb7","Bb7"]
-  ],
-  "Relaxin' at Camarillo": [
-    ["F7","Bb7","F7","F7"],
-    ["Bb7","Bdim7","F7","D7"],
-    ["Gm7","C7","F7","C7"]
-  ],
-  "Moose the Mooche": [
-    ["BbΔ7","G7","C7","F7"],
-    ["BbΔ7","G7","C7","F7"],
-    ["D7","G7","C7","F7"]
-  ],
-  "Steeplechase": [
-    ["BbΔ7","G7","C7","F7"],
-    ["BbΔ7","G7","C7","F7"],
-    ["D7","G7","C7","F7"]
-  ],
-  "Dexterity": [
-    ["BbΔ7","G7","C7","F7"],
-    ["BbΔ7","G7","C7","F7"],
-    ["D7","G7","C7","F7"]
-  ],
-  "Leap Frog": [
-    ["BbΔ7","G7","C7","F7"],
-    ["BbΔ7","G7","C7","F7"],
-    ["D7","G7","C7","F7"]
-  ],
-  "Ko-Ko": [
-    ["BbΔ7","A7","D7","G7"],
-    ["C7","F7","BbΔ7","F7"],
-    ["BbΔ7","A7","D7","G7"]
-  ],
-  "Yardbird Suite": [
-    ["CΔ7","A7","D7","G7"],
-    ["CΔ7","A7","D7","G7"],
-    ["F7","E7","A7","D7"]
-  ],
-  "Embraceable You": [
-    ["CΔ7","A7","Dm7","G7"],
-    ["CΔ7","A7","Dm7","G7"],
-    ["F7","E7","A7","D7"]
-  ],
-  "My Old Flame": [
-    ["EbΔ7","C7","Fm7","Bb7"],
-    ["EbΔ7","C7","Fm7","Bb7"],
-    ["Ab7","G7","C7","F7"]
-  ],
-  "Lover Man": [
-    ["CΔ7","A7","Dm7","G7"],
-    ["CΔ7","A7","Dm7","G7"],
-    ["F7","E7","A7","D7"]
-  ]
-});
-const tuneSel = document.getElementById('tuneSel');
-Object.keys(birdTunes).forEach(t=>{let o=document.createElement('option');o.textContent=t;tuneSel.appendChild(o);});
+/* --- Bird Tunes data (includes extended set) --- */
+const birdTunes={
+ "Bird Blues":[["IΔ7","vi7","ii7","V7"],["IΔ7","IV7","I7","bII7"],["ii7","V7","IΔ7","V7"]],
+ "Blues for Alice":[["Fmaj7","Em7b5","A7","Dm7"],["Gm7","C7","F7","Bb7"],["Bbm7","Eb7","Am7","D7"]],
+ "Now’s the Time":[["I7","IV7","I7","I7"],["IV7","IV7","I7","VI7"],["II7","V7","I7","I7"]],
+ "Anthropology":[["IΔ7","vi7","ii7","V7"],["III7","VI7","II7","V7"],["IΔ7","III7","VI7","II7"]],
+ "Ornithology":[["Gm7","C7","FΔ7","A7"],["Dm7","G7","CMaj7","F7"],["Bm7b5","E7","Am7","D7"]],
+ "Donna Lee":[["AbΔ7","G7","Cm7","F7"],["Bb7","EbΔ7","A7","D7"],["Gm7","C7","F7","Bb7"]],
+ "Au Privave":[["F7","Bb7","F7","F7"],["Bb7","Bdim7","F7","D7"],["Gm7","C7","F7","C7"]],
+ "Barbados":[["F7","Bb7","F7","F7"],["Bb7","Bbm7","F7","D7"],["Gm7","C7","F7","C7"]],
+ "Bloomdido":[["Bb7","Eb7","Bb7","Bb7"],["Eb7","E°7","Bb7","G7"],["C7","F7","Bb7","Bb7"]],
+ "Chi Chi":[["F7","Bb7","F7","F7"],["Bb7","Bdim7","F7","D7"],["Gm7","C7","F7","F7"]],
+ "Cool Blues":[["Bb7","Eb7","Bb7","Bb7"],["Eb7","E°7","Bb7","G7"],["C7","F7","Bb7","Bb7"]],
+ "Relaxin’ at Camarillo":[["F7","Bb7","F7","F7"],["Bb7","Bdim7","F7","D7"],["Gm7","C7","F7","C7"]],
+ "Moose the Mooche":[["BbΔ7","G7","C7","F7"],["BbΔ7","G7","C7","F7"],["D7","G7","C7","F7"]],
+ "Steeplechase":[["BbΔ7","G7","C7","F7"],["BbΔ7","G7","C7","F7"],["D7","G7","C7","F7"]],
+ "Dexterity":[["BbΔ7","G7","C7","F7"],["BbΔ7","G7","C7","F7"],["D7","G7","C7","F7"]],
+ "Leap Frog":[["BbΔ7","G7","C7","F7"],["BbΔ7","G7","C7","F7"],["D7","G7","C7","F7"]],
+ "Ko-Ko":[["BbΔ7","A7","D7","G7"],["C7","F7","BbΔ7","F7"],["BbΔ7","A7","D7","G7"]],
+ "Yardbird Suite":[["CΔ7","A7","D7","G7"],["CΔ7","A7","D7","G7"],["F7","E7","A7","D7"]],
+ "Embraceable You":[["CΔ7","A7","Dm7","G7"],["CΔ7","A7","Dm7","G7"],["F7","E7","A7","D7"]],
+ "My Old Flame":[["EbΔ7","C7","Fm7","Bb7"],["EbΔ7","C7","Fm7","Bb7"],["Ab7","G7","C7","F7"]],
+ "Lover Man":[["CΔ7","A7","Dm7","G7"],["CΔ7","A7","Dm7","G7"],["F7","E7","A7","D7"]]
+};
 
-/* ================================
+/* --- populate dropdown --- */
+const tuneSel=document.getElementById('tuneSel');
+Object.keys(birdTunes).forEach(t=>{
+  const o=document.createElement('option');
+  o.textContent=t;
+  tuneSel.appendChild(o);
+}); /* ================================
    AUDIO SETUP
 ==================================*/
-const freqBase = {'C':261.63,'C#':277.18,'Db':277.18,'D':293.66,'Eb':311.13,'E':329.63,'F':349.23,
+const freqBase={'C':261.63,'C#':277.18,'Db':277.18,'D':293.66,'Eb':311.13,'E':329.63,'F':349.23,
 'F#':369.99,'Gb':369.99,'G':392,'Ab':415.30,'A':440,'Bb':466.16,'A#':466.16,'B':493.88};
-const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-/* Make sure audio can start after first user gesture */
-let audioUnlocked = false;
-function unlockAudio(){
-  if(audioUnlocked) return;
-  const silent = audioCtx.createBufferSource();
-  silent.buffer = audioCtx.createBuffer(1, 1, 22050);
-  silent.connect(audioCtx.destination);
-  silent.start(0);
-  audioUnlocked = true;
-}
-document.addEventListener('pointerdown', ()=>audioCtx.resume().then(unlockAudio), { once:true });
+const audioCtx=new(window.AudioContext||window.webkitAudioContext)();
+let audioUnlocked=false;
+document.addEventListener('pointerdown',()=>{if(!audioUnlocked){audioCtx.resume();audioUnlocked=true;}},{once:true});
 
 /* ================================
-   FRETFBOARD BUILD
+   FRETFBOARD
 ==================================*/
-const stringNotes=['E','B','G','D','A','E']; // high to low
-function getNoteAtFret(open, fret, key){
-  const idx = NOTE_INDEX[open];
-  return indexToNote(idx + fret, key);
-}
+const stringNotes=['E','B','G','D','A','E'];
+function indexToPitch(open,f,key){return indexToNote(NOTE_INDEX[open]+f,key);}
 function buildFretboard(){
-  const fb=document.getElementById('fretboard'); fb.innerHTML='';
-  const key = keySel.value;
-  stringNotes.forEach(s=>{
-    const row=document.createElement('div'); row.className='string';
-    const lab=document.createElement('div'); lab.className='string-label'; lab.textContent=s; row.appendChild(lab);
-    for(let f=0;f<=12;f++){
-      const fr=document.createElement('div'); fr.className='fret';
-      const note = getNoteAtFret(s,f,key);
-      fr.dataset.note = note;
-      if(f===0) fr.textContent = s;
-      row.appendChild(fr);
-    } fb.appendChild(row);
-  });
+ const fb=document.getElementById('fretboard');fb.innerHTML='';
+ const key=keySel.value;
+ stringNotes.forEach(s=>{
+  const row=document.createElement('div');row.className='string';
+  const lab=document.createElement('div');lab.className='string-label';lab.textContent=s;row.appendChild(lab);
+  for(let f=0;f<=12;f++){
+    const fr=document.createElement('div');fr.className='fret';
+    const note=indexToPitch(s,f,key);fr.dataset.note=note;if(f===0)fr.textContent=s;row.appendChild(fr);
+  }fb.appendChild(row);
+ });
 }
 function clearFretboard(){document.querySelectorAll('.fret').forEach(fr=>{fr.className='fret';fr.textContent='';});}
 
 /* ================================
-   THEORY HELPERS
+   THEORY HELPERS + RENDERING
 ==================================*/
-const IONIAN = [0,2,4,5,7,9,11];
-const DEGREE_TO_NUM = { 'I':1,'II':2,'III':3,'IV':4,'V':5,'VI':6,'VII':7 };
-const NUM_TO_ROMAN = ['I','II','III','IV','V','VI','VII'];
+const IONIAN=[0,2,4,5,7,9,11];
+const DEGREE_TO_NUM={'I':1,'II':2,'III':3,'IV':4,'V':5,'VI':6,'VII':7};
+const NUM_TO_ROMAN=['I','II','III','IV','V','VI','VII'];
 
-function majorScale(key){ // returns 7-note array
-  const rootIdx = NOTE_INDEX[key];
-  return IONIAN.map(i => indexToNote(rootIdx + i, key));
+function majorScale(k){return IONIAN.map(i=>indexToNote(NOTE_INDEX[k]+i,k));}
+
+function detectKey(tune){
+ for(const r of tune)for(const s of r){if(/Δ|maj7|Maj7/i.test(s)){const m=s.match(/^([A-G](#|b)?)/);if(m)return m[1];}}
+ for(const r of tune)for(const s of r){const m=s.match(/^([A-G](#|b)?)/);if(m)return m[1];}
+ return'C';
 }
 
-function detectOriginalKeyFromTune(tuneRows){
-  // Look for a Maj7/Δ7 chord to infer I; fallback to first chord's root
-  for(const row of tuneRows){
-    for(const sym of row){
-      const m = sym.match(/^([A-G](?:#|b)?)(.*)$/);
-      if(m){
-        const [_, root, rest] = m;
-        if(/Δ|maj7|Maj7/i.test(rest)) return root;
-      }
-    }
-  }
-  // last resort: first letter chord root or C
-  for(const row of tuneRows){
-    for(const sym of row){
-      const m = sym.match(/^([A-G](?:#|b)?)/);
-      if(m) return m[1];
-    }
-  }
-  return 'C';
-}
-
-function parseChordSymbol(sym, key, transposeSemis=0){
-  // Return { root, displaySuffix, quality, romanDisplay }
-  // 1) Roman-style e.g., "ii7", "bII7", "IΔ7"
-  const romanMatch = sym.match(/^([b#]?)(I{1,3}|IV|V|VI{0,2}|VII)(.*)$/i);
-  if(romanMatch){
-    const [, acc, roman, ext] = romanMatch;
-    const degree = DEGREE_TO_NUM[roman.toUpperCase()];
-    const isLower = roman === roman.toLowerCase();
-    const accShift = acc === 'b' ? -1 : acc === '#' ? 1 : 0;
-    // Diatonic degree base
-    const rootOfKey = NOTE_INDEX[key];
-    const baseSemis = IONIAN[degree-1];
-    const absolute = rootOfKey + baseSemis + accShift + transposeSemis;
-    const root = indexToNote(absolute, key);
-
-    // quality inference
-    let quality='dom7', displaySuffix='7', mode='Mixolydian';
-    if(/Δ|maj/i.test(ext)) { quality='maj7'; displaySuffix='Δ7'; mode='Ionian'; }
-    else if(/°|dim/i.test(ext)) { quality='dim7'; displaySuffix='°7'; mode='Locrian'; }
-    else if(isLower) { quality='m7'; displaySuffix='m7'; mode='Dorian'; }
-
-    // keep provided explicit suffix if it contains extensions like m7b5
-    if(/m7b5|ø/i.test(ext)){ quality='m7b5'; displaySuffix='m7b5'; mode='Locrian'; }
-    if(/7/.test(ext) && quality==='maj7' && !/maj|Δ/.test(ext)){ displaySuffix='Δ7'; }
-
-    return { root, displaySuffix, quality, romanDisplay: (acc||'')+roman.toString()+ (displaySuffix||'') , mode };
-  }
-
-  // 2) Letter-style e.g., "Fmaj7", "Bm7b5"
-  const m = sym.match(/^([A-G](?:#|b)?)(.*)$/);
-  if(m){
-    let [, root, rest] = m;
-    // apply transposition
-    const idx = NOTE_INDEX[root];
-    const transposedRoot = indexToNote(idx + transposeSemis, key);
-    root = transposedRoot;
-
-    // normalize quality
-    let quality='dom7', displaySuffix='7', mode='Mixolydian';
-    if(/Δ|maj7|Maj7/i.test(rest)){ quality='maj7'; displaySuffix='Δ7'; mode='Ionian'; }
-    else if(/m7b5|ø/i.test(rest)){ quality='m7b5'; displaySuffix='m7b5'; mode='Locrian'; }
-    else if(/°7|dim7|o7/i.test(rest)){ quality='dim7'; displaySuffix='°7'; mode='Locrian'; }
-    else if(/m(?!aj)/i.test(rest)){ quality='m7'; displaySuffix='m7'; mode='Dorian'; }
-    else if(/7/.test(rest)){ quality='dom7'; displaySuffix='7'; mode='Mixolydian'; }
-    else { quality='maj7'; displaySuffix='Δ7'; mode='Ionian'; }
-
-    // roman analysis (simple)
-    const scale = majorScale(key);
-    const rootIdx = NOTE_INDEX[root];
-    const keyIdx = NOTE_INDEX[key];
-    const rel = (rootIdx - keyIdx + 12) % 12;
-    let degreeIdx = IONIAN.indexOf(rel);
-    let romanDisplay = '?';
-    if(degreeIdx !== -1){
-      const baseRoman = NUM_TO_ROMAN[degreeIdx];
-      const isMinor = (quality==='m7' || quality==='m7b5');
-      romanDisplay = isMinor ? baseRoman.toLowerCase() : baseRoman;
-      if(quality==='maj7') romanDisplay += 'Δ';
-      romanDisplay += displaySuffix.replace('Δ','').replace('Δ7','7'); // keep cleaner
-    } else {
-      // off-diatonic: try nearest +/-1
-      if(IONIAN.includes((rel+1)%12)) romanDisplay = 'b' + NUM_TO_ROMAN[IONIAN.indexOf((rel+1)%12)] + displaySuffix;
-      else if(IONIAN.includes((rel+11)%12)) romanDisplay = '#' + NUM_TO_ROMAN[IONIAN.indexOf((rel+11)%12)] + displaySuffix;
-      else romanDisplay = displaySuffix;
-    }
-    return { root, displaySuffix, quality, romanDisplay, mode };
-  }
-
-  // Fallback
-  return { root: indexToNote(NOTE_INDEX[key], key), displaySuffix:'', quality:'maj7', romanDisplay:'IΔ', mode:'Ionian' };
-}
-
-/* ================================
-   LEADSHEET RENDERING
-==================================*/
-const sheet=document.getElementById('sheet'), info=document.getElementById('info'), keySel=document.getElementById('keySel');
-let showScaleMode=false, showAnalysis=false;
-
-function playRoot(note){
-  const osc=audioCtx.createOscillator(); const g=audioCtx.createGain();
-  osc.type='sine'; osc.frequency.value=freqBase[note]||440; g.gain.value=0.15;
-  osc.connect(g); g.connect(audioCtx.destination);
-  const t=audioCtx.currentTime; g.gain.exponentialRampToValueAtTime(0.001,t+1);
-  osc.start(t); osc.stop(t+1);
-}
-
-function getChordTones(quality,root){
-  const map={
-    'maj7':[0,4,7,11],
-    'dom7':[0,4,7,10],
-    'm7':[0,3,7,10],
-    'dim7':[0,3,6,9],
-    'm7b5':[0,3,6,10]
-  };
-  const intervals=map[quality]||map['dom7'];
-  const idx=NOTE_INDEX[root];
-  const degs=['R','3','5','7'];
-  return intervals.map((i,n)=>({note:indexToNote(idx+i, keySel.value),degree:degs[n]}));
-}
-
-function showOnFretboard(root, chordTones, modeName){
-  clearFretboard();
-  const rootIdx=NOTE_INDEX[root];
-  const modeInts=modePatterns[modeName]||modePatterns['Ionian'];
-  document.querySelectorAll('.fret').forEach(fr=>{
-    const note=fr.dataset.note;
-    const noteIdx=NOTE_INDEX[note];
-    if(showScaleMode){
-      const intv=(noteIdx-rootIdx+12)%12;
-      if(modeInts.includes(intv)){
-        const lbl=intervalNames[intv]; fr.classList.add('highlighted');
-        fr.style.background=intervalColors[lbl]||'#2a2a2a';
-        fr.textContent=`${note}\n${lbl}`;
-      }
-    }else{
-      const m=chordTones.find(ct=>ct.note===note);
-      if(m){fr.classList.add('highlighted');
-        fr.style.background=intervalColors[m.degree]||'#2a2a2a';
-        fr.textContent=`${note}\n${m.degree}`;
-      }
-    }
-  });
-  document.getElementById('fretboard-section').style.display='block';
-  document.getElementById('fretboard-title').textContent=
-    showScaleMode?`${modeName} for ${root}`:`Chord tones for ${root}`;
-}
-
-/* --- Render the chosen tune --- */
-function renderTune(name,key){
-  sheet.innerHTML='';
-  const tune=birdTunes[name]; if(!tune) return;
-
-  // If tune is letter-based, compute transposition from detected original key to target key
-  const containsLetterChords = tune.flat().some(sym => /^[A-G]/.test(sym));
-  let transposeSemis = 0;
-  if(containsLetterChords){
-    const origRoot = detectOriginalKeyFromTune(tune);
-    const shift = (NOTE_INDEX[key] - NOTE_INDEX[origRoot] + 12) % 12;
-    transposeSemis = shift;
-  }
-
-  tune.forEach(rowChords=>{
-    const row=document.createElement('div'); row.className='row';
-    rowChords.forEach(sym=>{
-      const parsed = parseChordSymbol(sym, key, transposeSemis);
-      const bar=document.createElement('div'); bar.className='bar';
-      const displayChord = `${parsed.root}${parsed.displaySuffix}`;
-      const analysis=`Roman: ${parsed.romanDisplay}`;
-      bar.innerHTML=`<div class='chord'>${displayChord}</div>
-                     <div class='roman'>${parsed.romanDisplay}</div>
-                     <div class='analysis'>${analysis}</div>`;
-      bar.addEventListener('click',()=>{
-        playRoot(parsed.root);
-        const tones=getChordTones(parsed.quality, parsed.root);
-        showOnFretboard(parsed.root,tones,parsed.mode);
-      });
-      row.appendChild(bar);
-    });
-    sheet.appendChild(row);
-  });
-  info.innerHTML=`<strong>${name}</strong> in <strong>${key}</strong><br><span style='color:#888'>Click a chord bar to hear and view tones.</span>`;
-}
-
-/* ================================
-   EVENT HANDLERS
-==================================*/
-document.getElementById('generateBtn').addEventListener('click',()=>{ buildFretboard(); renderTune(tuneSel.value,keySel.value); });
-document.getElementById('randomTune').addEventListener('click',()=>{
-  const keys=Object.keys(birdTunes); const rnd=keys[Math.floor(Math.random()*keys.length)];
-  tuneSel.value=rnd; buildFretboard(); renderTune(rnd,keySel.value);
-});
-document.getElementById('toggleMode').addEventListener('click',()=>{
-  showScaleMode=!showScaleMode;
-  document.getElementById('toggleMode').textContent=showScaleMode?'Switch to Chord Mode':'Switch to Scale Mode';
-});
-document.getElementById('toggleAnalysis').addEventListener('click',()=>{
-  showAnalysis=!showAnalysis;
-  document.querySelectorAll('.analysis').forEach(a=>a.style.display=showAnalysis?'block':'none');
-});
-document.getElementById('printBtn').addEventListener('click',()=>window.print());
-
-/* --- build fretboard and default tune --- */
-buildFretboard();
-tuneSel.value = 'Bird Blues';
-renderTune('Bird Blues','C');
-</script>
-</body>
-</html>
+function parseChordSymbol(sym,key,shift=0){
+ const roman=sym.match(/^([b#]?)(I{1,3}|IV|V|VI{0,2}|VII)(.*)$/i);
+ if(roman){
+  const[,acc,rom,ext]=roman;const deg=DEGREE_TO_NUM[rom.toUpperCase()];
+  const isMin=rom===rom.toLowerCase();const a=acc==='b'?-1:acc==='#'?1:0;
+  const root=indexToNote(NOTE_INDEX[key]+IONIAN[deg-1]+a+shift,key);
+  let q='dom7',suf='7',mode='Mixolydian';
+  if(/Δ|maj/i.test(ext)){q='maj7';suf='Δ7';mode='Ionian';}
+  else if(/°|dim/i.test(ext)){q='dim7';suf='°7';mode='Locrian';}
+  else if(isMin){q='m7';suf='m7';mode='Dorian';}
+  if(/m7b5|ø/i.test(ext)){q='m7b5';suf='m7b5';mode='Locrian';}
+  return{root,displaySuffix:suf,quality:q,romanDisplay:(acc||'')+rom+suf,mode};
+ }
+ const m=sym.match(/^([A-G](#|b)?)(.*)$/);if(!m)return{root:key,displaySuffix:'Δ7',quality:'maj7',romanDisplay:'IΔ7',mode:'Ionian'};
+ let[,root,_,rest]=m;root=indexToNote(NOTE_INDEX[root]+shift,key);
+ let q
