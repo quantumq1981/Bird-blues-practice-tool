@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Bird Blues — Pro Lead Sheet & Fretboard Trainer</title>
+<title>Bird Blues & Bird Tunes Trainer v2.0</title>
 <style>
 :root {
   --bg:#121212;--panel:#1a1a1a;--ink:#eee;--ink-dim:#aaa;
@@ -26,6 +26,7 @@ h1{text-align:center;color:var(--accent);margin:16px 0;}
 .bar:hover{background:#222;transform:translateY(-1px);}
 .chord{font-size:22px;font-weight:bold;color:var(--sym);}
 .roman{font-size:12px;color:var(--ink-dim);}
+.analysis{font-size:10px;color:#90caf9;margin-top:3px;display:none;}
 .bebop{font-size:11px;color:#90caf9;opacity:.9;margin-top:4px;}
 .legend{text-align:center;color:#ccc;font-size:12px;margin-bottom:10px;}
 .fretboard-section{display:none;background:#1a1a1a;border:2px solid var(--accent);border-radius:8px;
@@ -48,74 +49,158 @@ h1{text-align:center;color:var(--accent);margin:16px 0;}
 </style>
 </head>
 <body>
-<h1>🎶 Bird Blues — Pro Lead Sheet & Fretboard Trainer</h1>
+<h1>🎶 Bird Blues & Bird Tunes Trainer v2.0</h1>
+
 <div class="controls">
+  <label for="tuneSel">Tune:</label>
+  <select id="tuneSel"></select>
+  <button id="randomTune">Random Bird Tune</button>
+
   <label for="keySel">Key:</label>
   <select id="keySel">
     <option>C</option><option>F</option><option>Bb</option><option>Eb</option>
     <option>Ab</option><option>Db</option><option>Gb</option><option>B</option>
     <option>E</option><option>A</option><option>D</option><option>G</option><option>F#</option>
   </select>
+
   <button id="generateBtn">Generate Lead Sheet</button>
   <button id="toggleMode" class="btn-secondary">Switch to Scale Mode</button>
+  <button id="toggleAnalysis" class="btn-secondary">Show Analysis Overlay</button>
   <button id="printBtn" class="btn-secondary">Print Lead Sheet</button>
 </div>
+
 <div class="legend">Click a bar to hear its root and view chord tones or scale across the fretboard.</div>
+
 <div id="sheet" class="sheet"></div>
 <div id="info" class="info"></div>
+
 <div class="fretboard-section" id="fretboard-section">
   <div class="fretboard-title" id="fretboard-title">Select a chord to view</div>
   <div class="fretboard" id="fretboard"></div>
-</div>
-
+</div>  
 <script>
-/* === CORE CONSTANTS === */
-const chromaticSharp=['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
-const chromaticFlat=['C','Db','D','Eb','E','F','Gb','G','Ab','A','Bb','B'];
-const flatKeys=['F','Bb','Eb','Ab','Db','Gb','Cb'];
-const audioCtx=new (window.AudioContext||window.webkitAudioContext)();
-const freqBase={'C':261.63,'C#':277.18,'Db':277.18,'D':293.66,'Eb':311.13,'E':329.63,
-'F':349.23,'F#':369.99,'Gb':369.99,'G':392.00,'G#':415.30,'Ab':415.30,'A':440.00,
-'Bb':466.16,'B':493.88};
+/* ================================
+   CORE DATA
+==================================*/
+const chromaticSharp = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+const chromaticFlat  = ['C','Db','D','Eb','E','F','Gb','G','Ab','A','Bb','B'];
+const flatKeys = ['F','Bb','Eb','Ab','Db','Gb','Cb'];
 
-/* === MODES (Ionian–Locrian) === */
-const modePatterns={
- 'Ionian':[0,2,4,5,7,9,11],
- 'Dorian':[0,2,3,5,7,9,10],
- 'Phrygian':[0,1,3,5,7,8,10],
- 'Lydian':[0,2,4,6,7,9,11],
- 'Mixolydian':[0,2,4,5,7,9,10],
- 'Aeolian':[0,2,3,5,7,8,10],
- 'Locrian':[0,1,3,5,6,8,10],
- 'Lydian ♯2':[0,3,4,6,7,9,11],
- 'Altered':[0,1,3,4,6,8,10],
- 'Whole Tone':[0,2,4,6,8,10],
- 'Diminished':[0,2,3,5,6,8,9,11]
+/* --- interval colour map --- */
+const intervalColors = {
+  'R':'#ff9800','♭2':'#00bcd4','2':'#4caf50','♯2':'#26c6da',
+  '♭3':'#00acc1','3':'#2196f3','4':'#9c27b0','♯4':'#ab47bc',
+  '5':'#f44336','♯5':'#e57373','♭6':'#e57373','6':'#fafafa',
+  '♭7':'#fbc02d','7':'#fff59d','9':'#4caf50','11':'#9c27b0','13':'#e0e0e0'
+};
+const intervalNames = {0:'R',1:'♭2',2:'2',3:'♭3',4:'3',5:'4',6:'♯4',7:'5',8:'♭6',9:'6',10:'♭7',11:'7'};
+
+/* --- modes & scale patterns (semitone intervals) --- */
+const modePatterns = {
+  'Ionian':[0,2,4,5,7,9,11],
+  'Dorian':[0,2,3,5,7,9,10],
+  'Phrygian':[0,1,3,5,7,8,10],
+  'Lydian':[0,2,4,6,7,9,11],
+  'Mixolydian':[0,2,4,5,7,9,10],
+  'Aeolian':[0,2,3,5,7,8,10],
+  'Locrian':[0,1,3,5,6,8,10],
+  'Major Bebop':[0,2,4,5,7,8,9,11],
+  'Dominant Bebop':[0,2,4,5,7,9,10,11],
+  'Minor Bebop':[0,2,3,5,7,8,10,11]
 };
 
+/* --- Bird Blues + tunes (simplified representations) --- */
+const birdTunes = {
+  "Bird Blues": [
+    ["IΔ7","vi7","ii7","V7"],
+    ["IΔ7","IV7","I7","bII7"],
+    ["ii7","V7","IΔ7","V7"]
+  ],
+  "Blues for Alice": [
+    ["Fmaj7","Em7b5","A7","Dm7"],
+    ["Gm7","C7","F7","Bb7"],
+    ["Bbm7","Eb7","Am7","D7"]
+  ],
+  "Now's the Time": [
+    ["I7","IV7","I7","I7"],
+    ["IV7","IV7","I7","VI7"],
+    ["II7","V7","I7","I7"]
+  ],
+  "Anthropology": [
+    ["IΔ7","vi7","ii7","V7"],
+    ["III7","VI7","II7","V7"],
+    ["IΔ7","III7","VI7","II7"]
+  ],
+  "Ornithology": [
+    ["Gm7","C7","FΔ7","A7"],
+    ["Dm7","G7","CMaj7","F7"],
+    ["Bm7b5","E7","Am7","D7"]
+  ],
+  "Donna Lee": [
+    ["AbΔ7","G7","Cm7","F7"],
+    ["Bb7","EbΔ7","A7","D7"],
+    ["Gm7","C7","F7","Bb7"]
+  ]
+};
+const tuneSel = document.getElementById('tuneSel');
+Object.keys(birdTunes).forEach(t=>{let o=document.createElement('option');o.textContent=t;tuneSel.appendChild(o);});
+
+/* ================================
+   AUDIO SETUP
+==================================*/
+const freqBase = {'C':261.63,'C#':277.18,'Db':277.18,'D':293.66,'Eb':311.13,'E':329.63,'F':349.23,
+'F#':369.99,'Gb':369.99,'G':392,'Ab':415.30,'A':440,'Bb':466.16,'B':493.88};
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+/* ================================
+   FRETBORD BUILD
+==================================*/
+const stringNotes=['E','B','G','D','A','E'];
 function useFlats(k){return flatKeys.includes(k);}
-function clearFretboard(){document.querySelectorAll('.fret').forEach(fr=>{fr.className='fret';fr.textContent='';});}
-function getNoteAtFret(s,f){const chromatic=chromaticFlat;const i=chromatic.indexOf(s);return chromatic[(i+f)%12];}
+function getNoteAtFret(s,f,scale){const i=scale.indexOf(s);return scale[(i+f)%12];}
 function buildFretboard(){
-  const fb=document.getElementById('fretboard');fb.innerHTML='';
-  const strings=['E','B','G','D','A','E'];
-  strings.forEach(s=>{
-    const row=document.createElement('div');row.className='string';
-    const lab=document.createElement('div');lab.className='string-label';lab.textContent=s;row.appendChild(lab);
-    for(let f=0;f<=12;f++){const fr=document.createElement('div');fr.className='fret';fr.dataset.note=getNoteAtFret(s,f);row.appendChild(fr);}
-    fb.appendChild(row);
+  const fb=document.getElementById('fretboard'); fb.innerHTML='';
+  const chromatic=useFlats(keySel.value)?chromaticFlat:chromaticSharp;
+  stringNotes.forEach(s=>{
+    const row=document.createElement('div'); row.className='string';
+    const lab=document.createElement('div'); lab.className='string-label'; lab.textContent=s; row.appendChild(lab);
+    for(let f=0;f<=12;f++){
+      const fr=document.createElement('div'); fr.className='fret';
+      fr.dataset.note=getNoteAtFret(s,f,chromatic); if(f===0) fr.textContent=s;
+      row.appendChild(fr);
+    } fb.appendChild(row);
   });
 }
+function clearFretboard(){document.querySelectorAll('.fret').forEach(fr=>{fr.className='fret';fr.textContent='';});}
 
-/* === INTERVAL COLOR LOGIC === */
-const intervalColors={'R':'#ff9800','♭2':'#00bcd4','2':'#4caf50','♯2':'#26c6da','♭3':'#00acc1','3':'#2196f3',
-'4':'#9c27b0','♯4':'#ab47bc','5':'#f44336','♭6':'#e57373','6':'#fafafa','♭7':'#fbc02d','7':'#fff59d'};
-const intervalNames={0:'R',1:'♭2',2:'2',3:'♭3',4:'3',5:'4',6:'♯4',7:'5',8:'♭6',9:'6',10:'♭7',11:'7'};
+/* ================================
+   LEADSHEET RENDERING
+==================================*/
+const sheet=document.getElementById('sheet'), info=document.getElementById('info'), keySel=document.getElementById('keySel');
+let showScaleMode=false, showAnalysis=false;
 
-let showScaleMode=false,currentScale=null;
+function playRoot(note){
+  const osc=audioCtx.createOscillator(); const g=audioCtx.createGain();
+  osc.type='sine'; osc.frequency.value=freqBase[note]||440; g.gain.value=0.15;
+  osc.connect(g); g.connect(audioCtx.destination);
+  const t=audioCtx.currentTime; g.gain.exponentialRampToValueAtTime(0.001,t+1);
+  osc.start(t); osc.stop(t+1);
+}
 
-/* === CORE VISUALIZATION === */
-function showOnFretboard(root,modeName){
+function transpose(note,key){
+  const scale=useFlats(key)?chromaticFlat:chromaticSharp;
+  const idx=scale.indexOf(note.replace(/[^A-G#b]/g,'')); return scale[idx>=0?idx:0];
+}
+
+function getChordTones(sym,root){
+  const map={'Δ7':[0,4,7,11],'7':[0,4,7,10],'m7':[0,3,7,10],'°7':[0,3,6,9]};
+  const intervals=map[sym.match(/Δ7|7|m7|°7/)?.[0]||'7'];
+  const chromatic=useFlats(keySel.value)?chromaticFlat:chromaticSharp;
+  const idx=chromatic.indexOf(root); const degs=['R','3','5','7'];
+  return intervals.map((i,n)=>({note:chromatic[(idx+i)%12],degree:degs[n]}));
+}
+
+function showOnFretboard(root, chordTones, modeName){
   clearFretboard();
   const chromatic=useFlats(keySel.value)?chromaticFlat:chromaticSharp;
   const rootIdx=chromatic.indexOf(root);
@@ -123,75 +208,90 @@ function showOnFretboard(root,modeName){
   document.querySelectorAll('.fret').forEach(fr=>{
     const note=fr.dataset.note;
     const noteIdx=chromatic.indexOf(note);
-    const interval=(noteIdx-rootIdx+12)%12;
-    if(modeInts.includes(interval)){
-      const label=intervalNames[interval]||'?';
-      fr.classList.add('highlighted');
-      fr.style.background=intervalColors[label]||'#2a2a2a';
-      fr.textContent=`${note}\n${label}`;
+    if(showScaleMode){
+      const intv=(noteIdx-rootIdx+12)%12;
+      if(modeInts.includes(intv)){
+        const lbl=intervalNames[intv]; fr.classList.add('highlighted');
+        fr.style.background=intervalColors[lbl]||'#2a2a2a';
+        fr.textContent=`${note}\n${lbl}`;
+      }
+    }else{
+      const m=chordTones.find(ct=>ct.note===note);
+      if(m){fr.classList.add('highlighted');
+        fr.style.background=intervalColors[m.degree]||'#2a2a2a';
+        fr.textContent=`${note}\n${m.degree}`;
+      }
     }
   });
   document.getElementById('fretboard-section').style.display='block';
-  document.getElementById('fretboard-title').textContent=`${modeName} for ${root}`;
-  currentScale={root,modeName};
+  document.getElementById('fretboard-title').textContent=
+    showScaleMode?`${modeName} for ${root}`:`Chord tones for ${root}`;
 }
 
-/* === PLAYBACK === */
+/* --- Scale playback --- */
 function playScale(root,modeName){
-  const pattern=modePatterns[modeName];if(!pattern)return;
+  const pattern=modePatterns[modeName]; if(!pattern)return;
   const chromatic=useFlats(keySel.value)?chromaticFlat:chromaticSharp;
   const rootIdx=chromatic.indexOf(root);
-  const notes=pattern.map(i=>chromatic[(rootIdx+i)%12]);
-  const seq=[...notes,...notes.slice().reverse().slice(1)];
-  const tempo=100,dur=60/tempo;
-  seq.forEach((n,i)=>{
-    const osc=audioCtx.createOscillator(),g=audioCtx.createGain();
-    osc.type='sine';osc.frequency.value=freqBase[n]||440;g.gain.value=0.1;
-    osc.connect(g);g.connect(audioCtx.destination);
-    osc.start(audioCtx.currentTime+i*dur);
-    osc.stop(audioCtx.currentTime+(i+1)*dur);
+  const seq=pattern.map(i=>chromatic[(rootIdx+i)%12]);
+  const full=[...seq,...seq.slice().reverse().slice(1)];
+  const dur=0.25; full.forEach((n,i)=>{
+    const osc=audioCtx.createOscillator(); const g=audioCtx.createGain();
+    osc.type='sine'; osc.frequency.value=freqBase[n]||440; g.gain.value=0.1;
+    osc.connect(g); g.connect(audioCtx.destination);
+    osc.start(audioCtx.currentTime+i*dur); osc.stop(audioCtx.currentTime+(i+1)*dur);
   });
 }
 
-/* === LEGEND === */
-const legendDiv=document.createElement('div');
-legendDiv.style.display='flex';legendDiv.style.flexWrap='wrap';
-legendDiv.style.justifyContent='center';legendDiv.style.gap='8px';legendDiv.style.marginTop='10px';
-legendDiv.innerHTML=Object.entries(intervalColors).map(([lbl,col])=>`
- <div style="display:flex;align-items:center;gap:4px;">
- <div style="width:18px;height:18px;background:${col};border:1px solid #555"></div>
- <span style="font-size:12px;color:#ccc">${lbl}</span></div>`).join('');
-document.getElementById('fretboard-section').appendChild(legendDiv);
-
-/* === SAMPLE LEAD SHEET === */
-const chords=[['C7','Mixolydian'],['A7','Mixolydian'],['D7','Mixolydian'],['G7','Mixolydian']];
-function renderLeadSheet(){
-  const sheet=document.getElementById('sheet');sheet.innerHTML='';
-  const row=document.createElement('div');row.className='row';
-  chords.forEach(([sym,mode])=>{
-    const bar=document.createElement('div');bar.className='bar';
-    bar.innerHTML=`<div class='chord'>${sym}</div><div class='roman'>${mode}</div>`;
-    bar.onclick=()=>{playRoot(sym[0]);showOnFretboard(sym[0],mode);};
-    row.appendChild(bar);
+/* --- Render the chosen tune --- */
+function renderTune(name,key){
+  sheet.innerHTML='';
+  const tune=birdTunes[name]; if(!tune)return;
+  tune.forEach(rowChords=>{
+    const row=document.createElement('div'); row.className='row';
+    rowChords.forEach(sym=>{
+      const root=sym.match(/[A-G][b#]?/)[0];
+      const chordRoot=transpose(root,key);
+      const bar=document.createElement('div'); bar.className='bar';
+      const roman=(sym.includes('Δ')?'IΔ':sym.includes('m')?'ii':'V');
+      const analysis=`Function: ${roman}`;
+      bar.innerHTML=`<div class='chord'>${chordRoot}${sym.replace(root,'')}</div>
+                     <div class='roman'>${roman}</div>
+                     <div class='analysis'>${analysis}</div>`;
+      bar.addEventListener('click',()=>{
+        playRoot(chordRoot);
+        const tones=getChordTones(sym,chordRoot);
+        const mode=(sym.includes('m')?'Dorian':sym.includes('Δ')?'Ionian':sym.includes('°')?'Locrian':'Mixolydian');
+        showOnFretboard(chordRoot,tones,mode);
+      });
+      row.appendChild(bar);
+    });
+    sheet.appendChild(row);
   });
-  sheet.appendChild(row);
+  info.innerHTML=`<strong>${name}</strong> in <strong>${key}</strong><br><span style='color:#888'>Click a chord bar to hear and view tones.</span>`;
 }
-function playRoot(n){const osc=audioCtx.createOscillator(),g=audioCtx.createGain();
-  osc.type='sine';osc.frequency.value=freqBase[n]||440;g.gain.value=0.1;
-  osc.connect(g);g.connect(audioCtx.destination);osc.start();osc.stop(audioCtx.currentTime+0.6);}
-renderLeadSheet();buildFretboard();
 
-/* === CONTROLS === */
-document.getElementById('generateBtn').onclick=renderLeadSheet;
-document.getElementById('toggleMode').onclick=()=>{showScaleMode=!showScaleMode;
-  document.getElementById('toggleMode').textContent=showScaleMode?'Switch to Chord Mode':'Switch to Scale Mode';};
-document.getElementById('printBtn').onclick=()=>window.print();
+/* ================================
+   EVENT HANDLERS
+==================================*/
+document.getElementById('generateBtn').addEventListener('click',()=>renderTune(tuneSel.value,keySel.value));
+document.getElementById('randomTune').addEventListener('click',()=>{
+  const keys=Object.keys(birdTunes); const rnd=keys[Math.floor(Math.random()*keys.length)];
+  tuneSel.value=rnd; renderTune(rnd,keySel.value);
+});
+document.getElementById('toggleMode').addEventListener('click',()=>{
+  showScaleMode=!showScaleMode;
+  document.getElementById('toggleMode').textContent=showScaleMode?'Switch to Chord Mode':'Switch to Scale Mode';
+});
+document.getElementById('toggleAnalysis').addEventListener('click',()=>{
+  showAnalysis=!showAnalysis;
+  document.querySelectorAll('.analysis').forEach(a=>a.style.display=showAnalysis?'block':'none');
+});
+document.getElementById('printBtn').addEventListener('click',()=>window.print());
 
-/* === PLAY SCALE BUTTON === */
-const playBtn=document.createElement('button');
-playBtn.textContent='Play Scale';playBtn.className='btn-secondary';playBtn.style.marginTop='10px';
-playBtn.onclick=()=>{if(currentScale)playScale(currentScale.root,currentScale.modeName);};
-document.getElementById('fretboard-section').appendChild(playBtn);
+/* --- build fretboard and default tune --- */
+buildFretboard();
+renderTune('Bird Blues','C');
 </script>
 </body>
 </html>
