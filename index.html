@@ -251,7 +251,11 @@
 const chromaticSharp = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
 const chromaticFlat  = ['C','Db','D','Eb','E','F','Gb','G','Ab','A','Bb','B'];
 const flatKeys = ['F','Bb','Eb','Ab','Db','Gb','Cb'];
-const romanSemitoneMap = {'I':0,'II':2,'III':4,'IV':5,'V':7,'VI':9,'VII':11,'♭II':1,'♭III':3,'♭V':6,'♭VI':8,'♭VII':10,'♯IV':6};
+const romanSemitoneMap = {
+  'I':0,'II':2,'III':4,'IV':5,'V':7,'VI':9,'VII':11,
+  '♭II':1,'♭III':3,'♭V':6,'♭VI':8,'♭VII':10,
+  '♯IV':6,'♯V':8,'♯VI':10,'♯VII':0
+};
 
 const parkerBluesSegments = [
   [ [{d:'I',q:'Δ7'},{d:'♭III',q:'°7'},{d:'II',q:'7'},{d:'♭II',q:'7'}],
@@ -275,7 +279,7 @@ function getChordSymbolObj(o,key){
   const flats=useFlats(key),scale=flats?chromaticFlat:chromaticSharp;
   const isMinor=o.d.endsWith('m'),deg=isMinor?o.d.slice(0,-1):o.d;
   const rootIdx=scale.indexOf(key),intv=romanSemitoneMap[deg]||0;
-  const note=scale[(rootIdx+intv)%12];
+  const note=scale[(rootIdx+intv+12)%12];
   const qual=isMinor && o.q==='7'?'m7':isMinor?('m'+o.q):o.q;
   return {
     note, qual,
@@ -286,97 +290,103 @@ function getChordSymbolObj(o,key){
 }
 
 function generateRandomParkerForm(){
+  const all = parkerBluesSegments.flat();
   const progression = [];
-  while(progression.length < 3){
-    const randomSet = parkerBluesSegments[Math.floor(Math.random() * parkerBluesSegments.length)];
-    progression.push(...randomSet);
+  while (progression.length < 12) {
+    const rand = all[Math.floor(Math.random() * all.length)];
+    progression.push(...rand);
   }
-  return progression.slice(0,3).flat();
+  return progression.slice(0, 12);
 }
 
 function buildChartData(k){
   const progression = generateRandomParkerForm();
-  return [progression.slice(0,4),progression.slice(4,8),progression.slice(8,12)];
+  const rows = [progression.slice(0,4),progression.slice(4,8),progression.slice(8,12)];
+  return rows.map(row => row.map(cell => getChordSymbolObj(cell, k)));
 }
 
-const stringNotes=['E','B','G','D','A','E']; const chromatic = chromaticFlat;
-function getNoteAtFret(s,f){ const i=chromatic.indexOf(s); return chromatic[(i+f)%12]; }
+// ——— FRETBOARD ———
+const stringNotes=['E','B','G','D','A','E'];
 function buildFretboard(){
-  const fb = document.getElementById('fretboard'); fb.innerHTML = '';
+  const fb=document.getElementById('fretboard');fb.innerHTML='';
   stringNotes.forEach(s=>{
-    const row = document.createElement('div'); row.className='string';
-    const lab = document.createElement('div'); lab.className='string-label'; lab.textContent = s; row.appendChild(lab);
+    const row=document.createElement('div');row.className='string';
+    const lab=document.createElement('div');lab.className='string-label';lab.textContent=s;row.appendChild(lab);
     for(let f=0;f<=12;f++){
-      const fr = document.createElement('div'); fr.className='fret'; fr.dataset.note = getNoteAtFret(s,f);
-      if(f===0) fr.textContent = s;
+      const fr=document.createElement('div');fr.className='fret';fr.dataset.note=getNoteAtFret(s,f);if(f===0)fr.textContent=s;
       row.appendChild(fr);
-    }
-    fb.appendChild(row);
+    }fb.appendChild(row);
   });
 }
-
-function clearFretboard(){ document.querySelectorAll('.fret').forEach(fr=>fr.className='fret'); }
-
+function getNoteAtFret(s,f){
+  const chromatic=useFlats(keySel.value)?chromaticFlat:chromaticSharp;
+  const i=chromatic.indexOf(s);
+  return chromatic[(i+f)%12];
+}
+function clearFretboard(){document.querySelectorAll('.fret').forEach(fr=>fr.className='fret');}
 function getChordTones(quality, root){
-  const intervals = {'Δ7':[0,4,7,11],'7':[0,4,7,10],'m7':[0,3,7,10],'°7':[0,3,6,9]};
-  const degrees = ['R','3','5','7'];
-  const idx = chromatic.indexOf(root);
+  const intervals={'Δ7':[0,4,7,11],'7':[0,4,7,10],'m7':[0,3,7,10],'°7':[0,3,6,9]};
+  const degrees=['R','3','5','7'];
+  const chromatic=useFlats(keySel.value)?chromaticFlat:chromaticSharp;
+  const idx=chromatic.indexOf(root);
   return (intervals[quality]||[0,4,7]).map((i,n)=>({
     note: chromatic[(idx+i)%12], degree: degrees[n]
   }));
 }
-
 function showChordOnFretboard(chordTones, root){
   clearFretboard();
-  document.querySelectorAll('.fret').forEach(fr => {
-    const note = fr.dataset.note;
-    const match = chordTones.find(ct => ct.note === note);
+  document.querySelectorAll('.fret').forEach(fr=>{
+    const note=fr.dataset.note;
+    const match=chordTones.find(ct=>ct.note===note);
     if(match){
       fr.classList.add('highlighted');
-      if(match.degree==='R') fr.classList.add('root');
-      else if(match.degree==='3') fr.classList.add('sub');
-      else if(match.degree==='5') fr.classList.add('dom');
-      else if(match.degree==='7') fr.classList.add('alt');
-      fr.setAttribute('data-degree', match.degree);
+      if(match.degree==='R')fr.classList.add('root');
+      else if(match.degree==='3')fr.classList.add('sub');
+      else if(match.degree==='5')fr.classList.add('dom');
+      else if(match.degree==='7')fr.classList.add('alt');
     }
   });
-  document.getElementById('fretboard-section').style.display = 'block';
-  document.getElementById('fretboard-title').textContent = `Chord Tones for ${root}`;
+  document.getElementById('fretboard-section').style.display='block';
+  document.getElementById('fretboard-title').textContent=`Chord Tones for ${root}`;
 }
 
+// ——— AUDIO ———
 const audioCtx=new (window.AudioContext||window.webkitAudioContext)();
 const freqBase={'C':261.63,'C#':277.18,'Db':277.18,'D':293.66,'Eb':311.13,'E':329.63,'F':349.23,'F#':369.99,'Gb':369.99,'G':392,'Ab':415.3,'A':440,'Bb':466.16,'B':493.88};
 function playRoot(note){
   try{
-    const osc = audioCtx.createOscillator(), g = audioCtx.createGain();
-    osc.type='sine'; osc.frequency.value=freqBase[note]||440; g.gain.value=0.001;
-    osc.connect(g); g.connect(audioCtx.destination);
-    const t = audioCtx.currentTime;
+    const osc=audioCtx.createOscillator(),g=audioCtx.createGain();
+    osc.type='sine';osc.frequency.value=freqBase[note]||440;g.gain.value=0.001;
+    osc.connect(g);g.connect(audioCtx.destination);
+    const t=audioCtx.currentTime;
     g.gain.exponentialRampToValueAtTime(0.2,t+0.02);
     g.gain.exponentialRampToValueAtTime(0.0001,t+0.9);
-    osc.start(t); osc.stop(t+1);
+    osc.start(t);osc.stop(t+1);
   }catch(e){console.log(e);}
 }
 
-const keySel=document.getElementById('keySel'), sheet=document.getElementById('sheet'), info=document.getElementById('info');
+// ——— RENDER ———
+const keySel=document.getElementById('keySel'),sheet=document.getElementById('sheet'),info=document.getElementById('info');
 function renderLeadSheet(k){
-  sheet.innerHTML = '';
-  const data = buildChartData(k);
-  data.forEach(r => {
-    const row = document.createElement('div'); row.className = 'row';
-    r.forEach(c => {
-      const bar = document.createElement('div'); bar.className = 'bar'; bar.title = `Scales: ${c.hint}`;
-      bar.innerHTML = `<div class='chord'>${c.chord}</div><div class='roman'>${c.roman}</div><div class='bebop'>${c.hint}</div>`;
-      bar.addEventListener('click', ()=>{
+  sheet.innerHTML='';
+  const data=buildChartData(k);
+  data.forEach(r=>{
+    const row=document.createElement('div');row.className='row';
+    r.forEach(c=>{
+      const bar=document.createElement('div');bar.className='bar';bar.title=`Scales: ${c.hint}`;
+      bar.innerHTML=`<div class='chord'>${c.chord}</div><div class='roman'>${c.roman}</div><div class='bebop'>${c.hint}</div>`;
+      bar.setAttribute('role','button');bar.tabIndex=0;
+      bar.addEventListener('click',()=>{
         playRoot(c.note);
-        const tones = getChordTones(c.qual,c.note);
+        const tones=getChordTones(c.qual,c.note);
         showChordOnFretboard(tones,c.note);
       });
+      bar.addEventListener('keypress',e=>{if(e.key==='Enter')bar.click();});
       row.appendChild(bar);
     });
     sheet.appendChild(row);
   });
-  info.innerHTML = `<strong>Bird Blues in ${k}</strong><br><span style="color:#888">Click bars to visualize on fretboard and hear roots.</span>`;
+  info.innerHTML=`<strong>Bird Blues in ${k}</strong><br><span style="color:#888">Click bars to visualize on fretboard and hear roots.</span>`;
 }
 renderLeadSheet('C');
 keySel.addEventListener('change',()=>renderLeadSheet(keySel.value));
