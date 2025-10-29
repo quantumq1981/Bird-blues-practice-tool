@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Bird Blues & Bird Tunes Trainer v2.0</title>
+<title>Bird Blues & Bird Tunes Trainer v2.1</title>
 <style>
 :root {
   --bg:#121212;--panel:#1a1a1a;--ink:#eee;--ink-dim:#aaa;
@@ -12,6 +12,7 @@
 body{margin:0;background:var(--bg);color:var(--ink);font-family:'Courier New',monospace;}
 h1{text-align:center;color:var(--accent);margin:16px 0;}
 .controls{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin:10px auto;}
+.controls label{align-self:center}
 .controls select,.controls button{background:#1e1e1e;color:var(--sym);border:1px solid var(--accent);
   padding:6px 12px;border-radius:6px;cursor:pointer;font-weight:bold;min-width:120px;transition:.15s;}
 .controls select:hover,.controls button:hover{background:var(--accent);color:#000;}
@@ -21,7 +22,7 @@ h1{text-align:center;color:var(--accent);margin:16px 0;}
   max-width:1100px;margin:0 auto 16px auto;overflow-x:auto;}
 .row{display:grid;grid-template-columns:repeat(4,1fr);min-width:720px;}
 .bar{min-height:88px;border-right:2px solid var(--barline);display:flex;flex-direction:column;
-  align-items:center;justify-content:center;cursor:pointer;transition:.12s;}
+  align-items:center;justify-content:center;cursor:pointer;transition:.12s;padding:6px;}
 .bar:last-child{border-right:none;}
 .bar:hover{background:#222;transform:translateY(-1px);}
 .chord{font-size:22px;font-weight:bold;color:var(--sym);}
@@ -49,15 +50,15 @@ h1{text-align:center;color:var(--accent);margin:16px 0;}
 </style>
 </head>
 <body>
-<h1>🎶 Bird Blues & Bird Tunes Trainer v2.0</h1>
+<h1>🎶 Bird Blues & Bird Tunes Trainer v2.1</h1>
 
 <div class="controls">
   <label for="tuneSel">Tune:</label>
-  <select id="tuneSel"></select>
+  <select id="tuneSel" aria-label="Select tune"></select>
   <button id="randomTune">Random Bird Tune</button>
 
   <label for="keySel">Key:</label>
-  <select id="keySel">
+  <select id="keySel" aria-label="Select key">
     <option>C</option><option>F</option><option>Bb</option><option>Eb</option>
     <option>Ab</option><option>Db</option><option>Gb</option><option>B</option>
     <option>E</option><option>A</option><option>D</option><option>G</option><option>F#</option>
@@ -86,6 +87,28 @@ const chromaticSharp = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
 const chromaticFlat  = ['C','Db','D','Eb','E','F','Gb','G','Ab','A','Bb','B'];
 const flatKeys = ['F','Bb','Eb','Ab','Db','Gb','Cb'];
 
+/* Normalized index mapping for all enharmonics */
+const NOTE_INDEX = {
+  'C':0, 'B#':0,
+  'C#':1, 'Db':1,
+  'D':2,
+  'D#':3, 'Eb':3,
+  'E':4, 'Fb':4,
+  'F':5, 'E#':5,
+  'F#':6, 'Gb':6,
+  'G':7,
+  'G#':8, 'Ab':8,
+  'A':9,
+  'A#':10,'Bb':10,
+  'B':11,'Cb':11
+};
+function indexToNote(i, key) {
+  const useFlats = flatKeys.includes(key);
+  const arr = useFlats ? chromaticFlat : chromaticSharp;
+  return arr[(i % 12 + 12) % 12];
+}
+function useFlatsForKey(k){ return flatKeys.includes(k); }
+
 /* --- interval colour map --- */
 const intervalColors = {
   'R':'#ff9800','♭2':'#00bcd4','2':'#4caf50','♯2':'#26c6da',
@@ -109,7 +132,7 @@ const modePatterns = {
   'Minor Bebop':[0,2,3,5,7,8,10,11]
 };
 
-/* --- Bird Blues + tunes (simplified representations) --- */
+/* --- Bird Blues + tunes (roman or letter symbols) --- */
 const birdTunes = {
   "Bird Blues": [
     ["IΔ7","vi7","ii7","V7"],
@@ -149,29 +172,149 @@ Object.keys(birdTunes).forEach(t=>{let o=document.createElement('option');o.text
    AUDIO SETUP
 ==================================*/
 const freqBase = {'C':261.63,'C#':277.18,'Db':277.18,'D':293.66,'Eb':311.13,'E':329.63,'F':349.23,
-'F#':369.99,'Gb':369.99,'G':392,'Ab':415.30,'A':440,'Bb':466.16,'B':493.88};
+'F#':369.99,'Gb':369.99,'G':392,'Ab':415.30,'A':440,'Bb':466.16,'A#':466.16,'B':493.88};
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+/* Make sure audio can start after first user gesture */
+let audioUnlocked = false;
+function unlockAudio(){
+  if(audioUnlocked) return;
+  const silent = audioCtx.createBufferSource();
+  silent.buffer = audioCtx.createBuffer(1, 1, 22050);
+  silent.connect(audioCtx.destination);
+  silent.start(0);
+  audioUnlocked = true;
+}
+document.addEventListener('pointerdown', ()=>audioCtx.resume().then(unlockAudio), { once:true });
 
 /* ================================
-   FRETBORD BUILD
+   FRETFBOARD BUILD
 ==================================*/
-const stringNotes=['E','B','G','D','A','E'];
-function useFlats(k){return flatKeys.includes(k);}
-function getNoteAtFret(s,f,scale){const i=scale.indexOf(s);return scale[(i+f)%12];}
+const stringNotes=['E','B','G','D','A','E']; // high to low
+function getNoteAtFret(open, fret, key){
+  const idx = NOTE_INDEX[open];
+  return indexToNote(idx + fret, key);
+}
 function buildFretboard(){
   const fb=document.getElementById('fretboard'); fb.innerHTML='';
-  const chromatic=useFlats(keySel.value)?chromaticFlat:chromaticSharp;
+  const key = keySel.value;
   stringNotes.forEach(s=>{
     const row=document.createElement('div'); row.className='string';
     const lab=document.createElement('div'); lab.className='string-label'; lab.textContent=s; row.appendChild(lab);
     for(let f=0;f<=12;f++){
       const fr=document.createElement('div'); fr.className='fret';
-      fr.dataset.note=getNoteAtFret(s,f,chromatic); if(f===0) fr.textContent=s;
+      const note = getNoteAtFret(s,f,key);
+      fr.dataset.note = note;
+      if(f===0) fr.textContent = s;
       row.appendChild(fr);
     } fb.appendChild(row);
   });
 }
 function clearFretboard(){document.querySelectorAll('.fret').forEach(fr=>{fr.className='fret';fr.textContent='';});}
+
+/* ================================
+   THEORY HELPERS
+==================================*/
+const IONIAN = [0,2,4,5,7,9,11];
+const DEGREE_TO_NUM = { 'I':1,'II':2,'III':3,'IV':4,'V':5,'VI':6,'VII':7 };
+const NUM_TO_ROMAN = ['I','II','III','IV','V','VI','VII'];
+
+function majorScale(key){ // returns 7-note array
+  const rootIdx = NOTE_INDEX[key];
+  return IONIAN.map(i => indexToNote(rootIdx + i, key));
+}
+
+function detectOriginalKeyFromTune(tuneRows){
+  // Look for a Maj7/Δ7 chord to infer I; fallback to first chord's root
+  for(const row of tuneRows){
+    for(const sym of row){
+      const m = sym.match(/^([A-G](?:#|b)?)(.*)$/);
+      if(m){
+        const [_, root, rest] = m;
+        if(/Δ|maj7|Maj7/i.test(rest)) return root;
+      }
+    }
+  }
+  // last resort: first letter chord root or C
+  for(const row of tuneRows){
+    for(const sym of row){
+      const m = sym.match(/^([A-G](?:#|b)?)/);
+      if(m) return m[1];
+    }
+  }
+  return 'C';
+}
+
+function parseChordSymbol(sym, key, transposeSemis=0){
+  // Return { root, displaySuffix, quality, romanDisplay }
+  // 1) Roman-style e.g., "ii7", "bII7", "IΔ7"
+  const romanMatch = sym.match(/^([b#]?)(I{1,3}|IV|V|VI{0,2}|VII)(.*)$/i);
+  if(romanMatch){
+    const [, acc, roman, ext] = romanMatch;
+    const degree = DEGREE_TO_NUM[roman.toUpperCase()];
+    const isLower = roman === roman.toLowerCase();
+    const accShift = acc === 'b' ? -1 : acc === '#' ? 1 : 0;
+    // Diatonic degree base
+    const rootOfKey = NOTE_INDEX[key];
+    const baseSemis = IONIAN[degree-1];
+    const absolute = rootOfKey + baseSemis + accShift + transposeSemis;
+    const root = indexToNote(absolute, key);
+
+    // quality inference
+    let quality='dom7', displaySuffix='7', mode='Mixolydian';
+    if(/Δ|maj/i.test(ext)) { quality='maj7'; displaySuffix='Δ7'; mode='Ionian'; }
+    else if(/°|dim/i.test(ext)) { quality='dim7'; displaySuffix='°7'; mode='Locrian'; }
+    else if(isLower) { quality='m7'; displaySuffix='m7'; mode='Dorian'; }
+
+    // keep provided explicit suffix if it contains extensions like m7b5
+    if(/m7b5|ø/i.test(ext)){ quality='m7b5'; displaySuffix='m7b5'; mode='Locrian'; }
+    if(/7/.test(ext) && quality==='maj7' && !/maj|Δ/.test(ext)){ displaySuffix='Δ7'; }
+
+    return { root, displaySuffix, quality, romanDisplay: (acc||'')+roman.toString()+ (displaySuffix||'') , mode };
+  }
+
+  // 2) Letter-style e.g., "Fmaj7", "Bm7b5"
+  const m = sym.match(/^([A-G](?:#|b)?)(.*)$/);
+  if(m){
+    let [, root, rest] = m;
+    // apply transposition
+    const idx = NOTE_INDEX[root];
+    const transposedRoot = indexToNote(idx + transposeSemis, key);
+    root = transposedRoot;
+
+    // normalize quality
+    let quality='dom7', displaySuffix='7', mode='Mixolydian';
+    if(/Δ|maj7|Maj7/i.test(rest)){ quality='maj7'; displaySuffix='Δ7'; mode='Ionian'; }
+    else if(/m7b5|ø/i.test(rest)){ quality='m7b5'; displaySuffix='m7b5'; mode='Locrian'; }
+    else if(/°7|dim7|o7/i.test(rest)){ quality='dim7'; displaySuffix='°7'; mode='Locrian'; }
+    else if(/m(?!aj)/i.test(rest)){ quality='m7'; displaySuffix='m7'; mode='Dorian'; }
+    else if(/7/.test(rest)){ quality='dom7'; displaySuffix='7'; mode='Mixolydian'; }
+    else { quality='maj7'; displaySuffix='Δ7'; mode='Ionian'; }
+
+    // roman analysis (simple)
+    const scale = majorScale(key);
+    const rootIdx = NOTE_INDEX[root];
+    const keyIdx = NOTE_INDEX[key];
+    const rel = (rootIdx - keyIdx + 12) % 12;
+    let degreeIdx = IONIAN.indexOf(rel);
+    let romanDisplay = '?';
+    if(degreeIdx !== -1){
+      const baseRoman = NUM_TO_ROMAN[degreeIdx];
+      const isMinor = (quality==='m7' || quality==='m7b5');
+      romanDisplay = isMinor ? baseRoman.toLowerCase() : baseRoman;
+      if(quality==='maj7') romanDisplay += 'Δ';
+      romanDisplay += displaySuffix.replace('Δ','').replace('Δ7','7'); // keep cleaner
+    } else {
+      // off-diatonic: try nearest +/-1
+      if(IONIAN.includes((rel+1)%12)) romanDisplay = 'b' + NUM_TO_ROMAN[IONIAN.indexOf((rel+1)%12)] + displaySuffix;
+      else if(IONIAN.includes((rel+11)%12)) romanDisplay = '#' + NUM_TO_ROMAN[IONIAN.indexOf((rel+11)%12)] + displaySuffix;
+      else romanDisplay = displaySuffix;
+    }
+    return { root, displaySuffix, quality, romanDisplay, mode };
+  }
+
+  // Fallback
+  return { root: indexToNote(NOTE_INDEX[key], key), displaySuffix:'', quality:'maj7', romanDisplay:'IΔ', mode:'Ionian' };
+}
 
 /* ================================
    LEADSHEET RENDERING
@@ -187,27 +330,27 @@ function playRoot(note){
   osc.start(t); osc.stop(t+1);
 }
 
-function transpose(note,key){
-  const scale=useFlats(key)?chromaticFlat:chromaticSharp;
-  const idx=scale.indexOf(note.replace(/[^A-G#b]/g,'')); return scale[idx>=0?idx:0];
-}
-
-function getChordTones(sym,root){
-  const map={'Δ7':[0,4,7,11],'7':[0,4,7,10],'m7':[0,3,7,10],'°7':[0,3,6,9]};
-  const intervals=map[sym.match(/Δ7|7|m7|°7/)?.[0]||'7'];
-  const chromatic=useFlats(keySel.value)?chromaticFlat:chromaticSharp;
-  const idx=chromatic.indexOf(root); const degs=['R','3','5','7'];
-  return intervals.map((i,n)=>({note:chromatic[(idx+i)%12],degree:degs[n]}));
+function getChordTones(quality,root){
+  const map={
+    'maj7':[0,4,7,11],
+    'dom7':[0,4,7,10],
+    'm7':[0,3,7,10],
+    'dim7':[0,3,6,9],
+    'm7b5':[0,3,6,10]
+  };
+  const intervals=map[quality]||map['dom7'];
+  const idx=NOTE_INDEX[root];
+  const degs=['R','3','5','7'];
+  return intervals.map((i,n)=>({note:indexToNote(idx+i, keySel.value),degree:degs[n]}));
 }
 
 function showOnFretboard(root, chordTones, modeName){
   clearFretboard();
-  const chromatic=useFlats(keySel.value)?chromaticFlat:chromaticSharp;
-  const rootIdx=chromatic.indexOf(root);
-  const modeInts=modePatterns[modeName]||[];
+  const rootIdx=NOTE_INDEX[root];
+  const modeInts=modePatterns[modeName]||modePatterns['Ionian'];
   document.querySelectorAll('.fret').forEach(fr=>{
     const note=fr.dataset.note;
-    const noteIdx=chromatic.indexOf(note);
+    const noteIdx=NOTE_INDEX[note];
     if(showScaleMode){
       const intv=(noteIdx-rootIdx+12)%12;
       if(modeInts.includes(intv)){
@@ -228,41 +371,34 @@ function showOnFretboard(root, chordTones, modeName){
     showScaleMode?`${modeName} for ${root}`:`Chord tones for ${root}`;
 }
 
-/* --- Scale playback --- */
-function playScale(root,modeName){
-  const pattern=modePatterns[modeName]; if(!pattern)return;
-  const chromatic=useFlats(keySel.value)?chromaticFlat:chromaticSharp;
-  const rootIdx=chromatic.indexOf(root);
-  const seq=pattern.map(i=>chromatic[(rootIdx+i)%12]);
-  const full=[...seq,...seq.slice().reverse().slice(1)];
-  const dur=0.25; full.forEach((n,i)=>{
-    const osc=audioCtx.createOscillator(); const g=audioCtx.createGain();
-    osc.type='sine'; osc.frequency.value=freqBase[n]||440; g.gain.value=0.1;
-    osc.connect(g); g.connect(audioCtx.destination);
-    osc.start(audioCtx.currentTime+i*dur); osc.stop(audioCtx.currentTime+(i+1)*dur);
-  });
-}
-
 /* --- Render the chosen tune --- */
 function renderTune(name,key){
   sheet.innerHTML='';
-  const tune=birdTunes[name]; if(!tune)return;
+  const tune=birdTunes[name]; if(!tune) return;
+
+  // If tune is letter-based, compute transposition from detected original key to target key
+  const containsLetterChords = tune.flat().some(sym => /^[A-G]/.test(sym));
+  let transposeSemis = 0;
+  if(containsLetterChords){
+    const origRoot = detectOriginalKeyFromTune(tune);
+    const shift = (NOTE_INDEX[key] - NOTE_INDEX[origRoot] + 12) % 12;
+    transposeSemis = shift;
+  }
+
   tune.forEach(rowChords=>{
     const row=document.createElement('div'); row.className='row';
     rowChords.forEach(sym=>{
-      const root=sym.match(/[A-G][b#]?/)[0];
-      const chordRoot=transpose(root,key);
+      const parsed = parseChordSymbol(sym, key, transposeSemis);
       const bar=document.createElement('div'); bar.className='bar';
-      const roman=(sym.includes('Δ')?'IΔ':sym.includes('m')?'ii':'V');
-      const analysis=`Function: ${roman}`;
-      bar.innerHTML=`<div class='chord'>${chordRoot}${sym.replace(root,'')}</div>
-                     <div class='roman'>${roman}</div>
+      const displayChord = `${parsed.root}${parsed.displaySuffix}`;
+      const analysis=`Roman: ${parsed.romanDisplay}`;
+      bar.innerHTML=`<div class='chord'>${displayChord}</div>
+                     <div class='roman'>${parsed.romanDisplay}</div>
                      <div class='analysis'>${analysis}</div>`;
       bar.addEventListener('click',()=>{
-        playRoot(chordRoot);
-        const tones=getChordTones(sym,chordRoot);
-        const mode=(sym.includes('m')?'Dorian':sym.includes('Δ')?'Ionian':sym.includes('°')?'Locrian':'Mixolydian');
-        showOnFretboard(chordRoot,tones,mode);
+        playRoot(parsed.root);
+        const tones=getChordTones(parsed.quality, parsed.root);
+        showOnFretboard(parsed.root,tones,parsed.mode);
       });
       row.appendChild(bar);
     });
@@ -274,10 +410,10 @@ function renderTune(name,key){
 /* ================================
    EVENT HANDLERS
 ==================================*/
-document.getElementById('generateBtn').addEventListener('click',()=>renderTune(tuneSel.value,keySel.value));
+document.getElementById('generateBtn').addEventListener('click',()=>{ buildFretboard(); renderTune(tuneSel.value,keySel.value); });
 document.getElementById('randomTune').addEventListener('click',()=>{
   const keys=Object.keys(birdTunes); const rnd=keys[Math.floor(Math.random()*keys.length)];
-  tuneSel.value=rnd; renderTune(rnd,keySel.value);
+  tuneSel.value=rnd; buildFretboard(); renderTune(rnd,keySel.value);
 });
 document.getElementById('toggleMode').addEventListener('click',()=>{
   showScaleMode=!showScaleMode;
@@ -291,6 +427,7 @@ document.getElementById('printBtn').addEventListener('click',()=>window.print())
 
 /* --- build fretboard and default tune --- */
 buildFretboard();
+tuneSel.value = 'Bird Blues';
 renderTune('Bird Blues','C');
 </script>
 </body>
