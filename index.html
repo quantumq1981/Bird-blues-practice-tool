@@ -164,7 +164,85 @@ const birdTunes = {
     ["Bb7","EbΔ7","A7","D7"],
     ["Gm7","C7","F7","Bb7"]
   ]
-};
+});
+  /* --- Extended Parker Tunes from Tune Book --- */
+Object.assign(birdTunes, {
+  "Au Privave": [
+    ["F7","Bb7","F7","F7"],
+    ["Bb7","Bdim7","F7","D7"],
+    ["Gm7","C7","F7","C7"]
+  ],
+  "Barbados": [
+    ["F7","Bb7","F7","F7"],
+    ["Bb7","Bbm7","F7","D7"],
+    ["Gm7","C7","F7","C7"]
+  ],
+  "Bloomdido": [
+    ["Bb7","Eb7","Bb7","Bb7"],
+    ["Eb7","E°7","Bb7","G7"],
+    ["C7","F7","Bb7","Bb7"]
+  ],
+  "Chi Chi": [
+    ["F7","Bb7","F7","F7"],
+    ["Bb7","Bdim7","F7","D7"],
+    ["Gm7","C7","F7","F7"]
+  ],
+  "Cool Blues": [
+    ["Bb7","Eb7","Bb7","Bb7"],
+    ["Eb7","E°7","Bb7","G7"],
+    ["C7","F7","Bb7","Bb7"]
+  ],
+  "Relaxin' at Camarillo": [
+    ["F7","Bb7","F7","F7"],
+    ["Bb7","Bdim7","F7","D7"],
+    ["Gm7","C7","F7","C7"]
+  ],
+  "Moose the Mooche": [
+    ["BbΔ7","G7","C7","F7"],
+    ["BbΔ7","G7","C7","F7"],
+    ["D7","G7","C7","F7"]
+  ],
+  "Steeplechase": [
+    ["BbΔ7","G7","C7","F7"],
+    ["BbΔ7","G7","C7","F7"],
+    ["D7","G7","C7","F7"]
+  ],
+  "Dexterity": [
+    ["BbΔ7","G7","C7","F7"],
+    ["BbΔ7","G7","C7","F7"],
+    ["D7","G7","C7","F7"]
+  ],
+  "Leap Frog": [
+    ["BbΔ7","G7","C7","F7"],
+    ["BbΔ7","G7","C7","F7"],
+    ["D7","G7","C7","F7"]
+  ],
+  "Ko-Ko": [
+    ["BbΔ7","A7","D7","G7"],
+    ["C7","F7","BbΔ7","F7"],
+    ["BbΔ7","A7","D7","G7"]
+  ],
+  "Yardbird Suite": [
+    ["CΔ7","A7","D7","G7"],
+    ["CΔ7","A7","D7","G7"],
+    ["F7","E7","A7","D7"]
+  ],
+  "Embraceable You": [
+    ["CΔ7","A7","Dm7","G7"],
+    ["CΔ7","A7","Dm7","G7"],
+    ["F7","E7","A7","D7"]
+  ],
+  "My Old Flame": [
+    ["EbΔ7","C7","Fm7","Bb7"],
+    ["EbΔ7","C7","Fm7","Bb7"],
+    ["Ab7","G7","C7","F7"]
+  ],
+  "Lover Man": [
+    ["CΔ7","A7","Dm7","G7"],
+    ["CΔ7","A7","Dm7","G7"],
+    ["F7","E7","A7","D7"]
+  ]
+});
 const tuneSel = document.getElementById('tuneSel');
 Object.keys(birdTunes).forEach(t=>{let o=document.createElement('option');o.textContent=t;tuneSel.appendChild(o);});
 
