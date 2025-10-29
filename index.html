@@ -3,53 +3,114 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Bird Blues &amp; Bird Tunes Trainer v2.3 (Roman-normalized)</title>
+<title>Bird Blues &amp; Bird Tunes Trainer v2.4 (Parker-Enhanced)</title>
 <style>
 :root {
   --bg:#121212;--panel:#1a1a1a;--ink:#eee;--ink-dim:#aaa;
   --accent:#ff9800;--accent2:#42a5f5;--barline:#666;--sym:#ffb733;
 }
-body{margin:0;background:var(--bg);color:var(--ink);font-family:'Courier New',monospace;}
+body {
+  margin:0;background:var(--bg);color:var(--ink);
+  font-family:'Courier New',monospace;
+}
 h1{text-align:center;color:var(--accent);margin:16px 0;}
-.controls{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin:10px auto;}
-.controls label{align-self:center}
-.controls select,.controls button{background:#1e1e1e;color:var(--sym);border:1px solid var(--accent);
-  padding:6px 12px;border-radius:6px;cursor:pointer;font-weight:bold;min-width:120px;transition:.15s;}
-.controls select:hover,.controls button:hover{background:var(--accent);color:#000;}
-.btn-secondary{border-color:var(--accent2);color:#9fd2ff;}
-.btn-secondary:hover{background:var(--accent2);color:#000;}
-.sheet{background:var(--panel);border:2px solid var(--accent);border-radius:10px;padding:16px;
-  max-width:1100px;margin:0 auto 16px auto;overflow-x:auto;}
-.row{display:grid;grid-template-columns:repeat(4,1fr);min-width:720px;}
-.bar{min-height:88px;border-right:2px solid var(--barline);display:flex;flex-direction:column;
-  align-items:center;justify-content:center;cursor:pointer;transition:.12s;padding:6px;}
-.bar:last-child{border-right:none;}
-.bar:hover{background:#222;transform:translateY(-1px);}
-.chord{font-size:22px;font-weight:bold;color:var(--sym);}
-.roman{font-size:12px;color:var(--ink-dim);}
-.analysis{font-size:10px;color:#90caf9;margin-top:3px;display:none;}
-.legend{text-align:center;color:#ccc;font-size:12px;margin-bottom:10px;}
-.fretboard-section{display:none;background:#1a1a1a;border:2px solid var(--accent);border-radius:8px;
-  padding:20px;max-width:1100px;margin:30px auto;}
-.fretboard-title{text-align:center;color:var(--accent);margin-bottom:15px;}
-.fretboard{display:flex;flex-direction:column;gap:3px;background:#2a2a2a;padding:15px;border-radius:4px;
-  overflow-x:auto;}
-.string{display:flex;gap:2px;align-items:center;}
-.string-label{width:30px;text-align:right;color:#888;font-size:14px;font-weight:bold;}
-.fret{width:50px;height:35px;background:#3a3a3a;border:1px solid #555;display:flex;align-items:center;
-  justify-content:center;font-size:12px;color:#666;text-align:center;white-space:pre-wrap;}
-.fret.highlighted{font-weight:bold;}
-@media print{
-  body{background:#fff;color:#000}
-  .controls,.legend,.fretboard-section{display:none}
-  .sheet{border:none;background:#fff}
-  h1{font-size:24px;text-align:left;margin-bottom:6px;color:#000}
-  .chord{color:#000}.roman{color:#222}
+.controls {
+  display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin:10px auto;
+}
+.controls label {
+  align-self:center
+}
+.controls select,.controls button {
+  background:#1e1e1e;color:var(--sym);border:1px solid var(--accent);
+  padding:6px 12px;border-radius:6px;cursor:pointer;font-weight:bold;
+  min-width:120px;transition:.15s;
+}
+.controls select:hover,.controls button:hover {
+  background:var(--accent);color:#000;
+}
+.btn-secondary {
+  border-color:var(--accent2);color:#9fd2ff;
+}
+.btn-secondary:hover {
+  background:var(--accent2);color:#000;
+}
+.sheet {
+  background:var(--panel);border:2px solid var(--accent);
+  border-radius:10px;padding:16px;
+  max-width:1100px;margin:0 auto 16px auto;overflow-x:auto;
+}
+.row {
+  display:grid;grid-template-columns:repeat(4,1fr);min-width:720px;
+}
+.bar {
+  min-height:88px;border-right:2px solid var(--barline);
+  display:flex;flex-direction:column;
+  align-items:center;justify-content:center;cursor:pointer;
+  transition:.12s;padding:6px;
+}
+.bar:last-child { border-right:none; }
+.bar:hover {
+  background:#222;transform:translateY(-1px);
+}
+.chord {
+  font-size:22px;font-weight:bold;color:var(--sym);
+}
+.roman {
+  font-size:12px;color:var(--ink-dim);
+}
+.analysis {
+  font-size:10px;color:#90caf9;margin-top:3px;display:none;
+}
+.subs {
+  font-size:10px;color:#efefef;margin-top:5px;
+  background:#2c2c2c;padding:4px;border-radius:4px;
+  display:none;
+}
+.legend {
+  text-align:center;color:#ccc;font-size:12px;margin-bottom:10px;
+}
+.fretboard-section {
+  display:none;background:#1a1a1a;border:2px solid var(--accent);
+  border-radius:8px;padding:20px;max-width:1100px;margin:30px auto;
+}
+.fretboard-title {
+  text-align:center;color:var(--accent);margin-bottom:15px;
+}
+.fretboard {
+  display:flex;flex-direction:column;gap:3px;
+  background:#2a2a2a;padding:15px;border-radius:4px;
+  overflow-x:auto;
+}
+.string {
+  display:flex;gap:2px;align-items:center;
+}
+.string-label {
+  width:30px;text-align:right;color:#888;font-size:14px;font-weight:bold;
+}
+.fret {
+  width:50px;height:35px;background:#3a3a3a;border:1px solid #555;
+  display:flex;align-items:center;justify-content:center;
+  font-size:12px;color:#666;text-align:center;white-space:pre-wrap;
+}
+.fret.highlighted {
+  font-weight:bold;
+}
+.help-panel {
+  display:none;background:#222;border:1px solid var(--accent2);
+  border-radius:8px;padding:15px;margin:20px auto;max-width:960px;
+  color:#ddd;font-size:13px;line-height:1.5;
+}
+@media print {
+  body {background:#fff;color:#000}
+  .controls,.legend,.fretboard-section,.help-panel {display:none}
+  .sheet {border:none;background:#fff}
+  h1 {font-size:24px;text-align:left;margin-bottom:6px;color:#000}
+  .chord {color:#000}.roman {color:#222}
 }
 </style>
 </head>
 <body>
-<h1>🎶 Bird Blues &amp; Bird Tunes Trainer v2.3</h1>
+<h1>🎶 Bird Blues &amp; Bird Tunes Trainer v2.4 (Parker-Enhanced)</h1>
 
 <div class="controls">
   <label for="tuneSel">Tune:</label>
@@ -339,7 +400,8 @@ const birdTunesRoman = normalizeAllTunesToRoman(Object.assign({}, originalTunes,
    AUDIO
 ==================================*/
 const freqBase = {'C':261.63,'C#':277.18,'Db':277.18,'D':293.66,'Eb':311.13,'E':329.63,'F':349.23,
-'F#':369.99,'Gb':369.99,'G':392,'Ab':415.30,'A':440,'Bb':466.16,'A#':466.16,'B':493.88};
+'F#':369.99,'Gb':369.99,'G':392,'Ab':415.30,'A':440,'Bb':466.16,'A#':466.16,'B':493.88,
+'Cb':246.94,'Fb':329.63,'E#':349.23,'B#':261.63};
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 let audioUnlocked = false;
 function unlockAudio(){
@@ -351,6 +413,36 @@ function unlockAudio(){
   audioUnlocked = true;
 }
 document.addEventListener('pointerdown', ()=>audioCtx.resume().then(unlockAudio), { once:true });
+
+function noteFrequency(note){
+  if(freqBase[note]) return freqBase[note];
+  const idx = NOTE_INDEX[note];
+  if(idx==null) return 440;
+  const distance = idx - NOTE_INDEX['A'];
+  return 440 * Math.pow(2, distance/12);
+}
+
+function playChord(root, quality){
+  if(!audioCtx) return;
+  if(audioCtx.state === 'suspended') audioCtx.resume();
+  unlockAudio();
+  const intervals = CHORD_INTERVALS[quality] || CHORD_INTERVALS['dom7'];
+  const rootFreq = noteFrequency(root);
+  const start = audioCtx.currentTime + 0.02;
+  intervals.forEach((semi, idx)=>{
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = idx===0 ? 'sine' : 'triangle';
+    osc.frequency.value = rootFreq * Math.pow(2, semi/12);
+    gain.gain.setValueAtTime(0.0001, start);
+    gain.gain.exponentialRampToValueAtTime(0.18/(idx+1), start+0.06);
+    gain.gain.exponentialRampToValueAtTime(0.0001, start+0.9);
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.start(start);
+    osc.stop(start+1);
+  });
+}
 
 /* ================================
    FRETFBOARD
@@ -370,18 +462,29 @@ function buildFretboard(){
       const fr=document.createElement('div'); fr.className='fret';
       const note = getNoteAtFret(s,f,key);
       fr.dataset.note = note;
-      if(f===0) fr.textContent = s;
+      fr.dataset.fret = f;
+      fr.dataset.default = f===0 ? s : '';
+      fr.textContent = fr.dataset.default;
       row.appendChild(fr);
-    } fb.appendChild(row);
+    }
+    fb.appendChild(row);
   });
 }
-function clearFretboard(){document.querySelectorAll('.fret').forEach(fr=>{fr.className='fret';fr.textContent='';});}
+function clearFretboard(){
+  document.querySelectorAll('.fret').forEach(fr=>{
+    fr.className='fret';
+    fr.textContent = fr.dataset ? fr.dataset.default || '' : '';
+    fr.style.background='';
+    fr.style.color='';
+  });
+}
 
 /* ================================
    CHORD PARSING & RENDER
 ==================================*/
 const sheet=document.getElementById('sheet'), info=document.getElementById('info'), keySel=document.getElementById('keySel');
 let showScaleMode=false, showAnalysis=false;
+let currentChordContext=null;
 
 function parseRomanChord(sym, key){
   // case-insensitive roman; strict suffixes
@@ -409,48 +512,62 @@ function parseRomanChord(sym, key){
   return { root, quality, suffix, numeral, mode };
 }
 
+const CHORD_INTERVALS={
+  'maj7':[0,4,7,11],
+  'dom7':[0,4,7,10],
+  'm7':[0,3,7,10],
+  'dim7':[0,3,6,9],
+  'm7b5':[0,3,6,10]
+};
+
 function getChordTones(quality,root){
-  const map={
-    'maj7':[0,4,7,11],
-    'dom7':[0,4,7,10],
-    'm7':[0,3,7,10],
-    'dim7':[0,3,6,9],
-    'm7b5':[0,3,6,10]
-  };
-  const intervals=map[quality]||map['dom7'];
+  const intervals=CHORD_INTERVALS[quality]||CHORD_INTERVALS['dom7'];
   const idx=NOTE_INDEX[root];
   const degs=['R','3','5','7'];
   return intervals.map((i,n)=>({note:indexToNote(idx+i, keySel.value),degree:degs[n]}));
 }
 
-function showOnFretboard(root, chordTones, modeName){
+function refreshFretboardDisplay(){
+  if(!currentChordContext) return;
   clearFretboard();
+  const { root, chordTones, mode } = currentChordContext;
   const rootIdx=NOTE_INDEX[root];
-  const modeInts=modePatterns[modeName]||modePatterns['Ionian'];
+  const modeInts=modePatterns[mode]||modePatterns['Ionian'];
   document.querySelectorAll('.fret').forEach(fr=>{
     const note=fr.dataset.note;
     const noteIdx=NOTE_INDEX[note];
+    if(noteIdx==null) return;
     if(showScaleMode){
       const intv=(noteIdx-rootIdx+12)%12;
       if(modeInts.includes(intv)){
         const lbl=intervalNames[intv]; fr.classList.add('highlighted');
         fr.style.background=intervalColors[lbl]||'#2a2a2a';
+        fr.style.color='#fff';
         fr.textContent=`${note}\n${lbl}`;
       }
     }else{
       const m=chordTones.find(ct=>ct.note===note);
       if(m){fr.classList.add('highlighted');
         fr.style.background=intervalColors[m.degree]||'#2a2a2a';
+        fr.style.color='#fff';
         fr.textContent=`${note}\n${m.degree}`;
       }
     }
   });
   document.getElementById('fretboard-section').style.display='block';
   document.getElementById('fretboard-title').textContent=
-    showScaleMode?`${modeName} for ${root}`:`Chord tones for ${root}`;
+    showScaleMode?`${currentChordContext.mode} for ${root}`:`Chord tones for ${root}`;
+}
+
+function showOnFretboard(root, chordTones, modeName, quality){
+  currentChordContext={ root, chordTones, mode:modeName, quality };
+  refreshFretboardDisplay();
 }
 
 function renderTune(name,key){
+  currentChordContext=null;
+  clearFretboard();
+  document.getElementById('fretboard-section').style.display='none';
   sheet.innerHTML='';
   const tune=birdTunesRoman[name]; if(!tune){ info.textContent='No tune data.'; return; }
 
@@ -464,9 +581,12 @@ function renderTune(name,key){
       bar.innerHTML=`<div class='chord'>${displayChord}</div>
                      <div class='roman'>${parsed.numeral}</div>
                      <div class='analysis'>${analysis}</div>`;
+      const analysisEl = bar.querySelector('.analysis');
+      if(showAnalysis) analysisEl.style.display='block';
       bar.addEventListener('click',()=>{
         const tones=getChordTones(parsed.quality, parsed.root);
-        showOnFretboard(parsed.root,tones,parsed.mode);
+        playChord(parsed.root, parsed.quality);
+        showOnFretboard(parsed.root,tones,parsed.mode,parsed.quality);
       });
       row.appendChild(bar);
     });
@@ -482,27 +602,53 @@ const tuneSel = document.getElementById('tuneSel');
 Object.keys(birdTunesRoman).forEach(t=>{
   const o=document.createElement('option'); o.textContent=t; o.value=t; tuneSel.appendChild(o);
 });
-document.getElementById('generateBtn').addEventListener('click',()=>{ buildFretboard(); renderTune(tuneSel.value,keySel.value); });
+const toggleModeBtn = document.getElementById('toggleMode');
+const toggleAnalysisBtn = document.getElementById('toggleAnalysis');
+
+function applyAnalysisVisibility(){
+  document.querySelectorAll('.analysis').forEach(a=>a.style.display=showAnalysis?'block':'none');
+}
+
+document.getElementById('generateBtn').addEventListener('click',()=>{
+  buildFretboard();
+  renderTune(tuneSel.value,keySel.value);
+  applyAnalysisVisibility();
+});
 document.getElementById('randomTune').addEventListener('click',()=>{
   const keys=Object.keys(birdTunesRoman); const rnd=keys[Math.floor(Math.random()*keys.length)];
-  tuneSel.value=rnd; buildFretboard(); renderTune(rnd,keySel.value);
+  tuneSel.value=rnd;
+  buildFretboard();
+  renderTune(rnd,keySel.value);
+  applyAnalysisVisibility();
 });
-tuneSel.addEventListener('change',()=>{ buildFretboard(); renderTune(tuneSel.value, keySel.value); });
-keySel.addEventListener('change',()=>{ buildFretboard(); renderTune(tuneSel.value, keySel.value); });
-document.getElementById('toggleMode').addEventListener('click',()=>{
+tuneSel.addEventListener('change',()=>{
+  buildFretboard();
+  renderTune(tuneSel.value, keySel.value);
+  applyAnalysisVisibility();
+});
+keySel.addEventListener('change',()=>{
+  buildFretboard();
+  renderTune(tuneSel.value, keySel.value);
+  applyAnalysisVisibility();
+});
+toggleModeBtn.addEventListener('click',()=>{
   showScaleMode=!showScaleMode;
-  document.getElementById('toggleMode').textContent=showScaleMode?'Switch to Chord Mode':'Switch to Scale Mode';
+  toggleModeBtn.textContent=showScaleMode?'Switch to Chord Mode':'Switch to Scale Mode';
+  refreshFretboardDisplay();
 });
-document.getElementById('toggleAnalysis').addEventListener('click',()=>{
+toggleAnalysisBtn.addEventListener('click',()=>{
   showAnalysis=!showAnalysis;
-  document.querySelectorAll('.analysis').forEach(a=>a.style.display=showAnalysis?'block':'none');
+  toggleAnalysisBtn.textContent=showAnalysis?'Hide Analysis Overlay':'Show Analysis Overlay';
+  applyAnalysisVisibility();
 });
 document.getElementById('printBtn').addEventListener('click',()=>window.print());
 
 /* --- initial render --- */
 buildFretboard();
 tuneSel.value = tuneSel.options.length ? tuneSel.options[0].value : '';
-if(tuneSel.value){ renderTune(tuneSel.value,'C'); }
+toggleAnalysisBtn.textContent='Show Analysis Overlay';
+if(tuneSel.value){ renderTune(tuneSel.value,keySel.value || 'C'); }
+applyAnalysisVisibility();
 </script>
 </body>
 </html>
