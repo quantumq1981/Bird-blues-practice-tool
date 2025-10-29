@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Bird Blues — Pro Lead Sheet & Fretboard Trainer</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root{
+      --bg:#121212;--panel:#1a1a1a;--ink:#eee;--ink-dim:#aaa;
+      --accent:#ff9800;--accent-2:#42a5f5;--barline:#666;--sym:#ffb733;
+    }
+    html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);font-family:'Courier New',monospace}
+    h1{margin:16px 0;text-align:center;color:var(--accent)}
+
+    .controls{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;align-items:center;margin:8px auto 16px auto;padding:8px 12px}
+    .controls select,.controls button{
+      appearance:none;background:#1e1e1e;color:var(--sym);border:1px solid var(--accent);
+      padding:6px 12px;border-radius:6px;font-weight:bold;cursor:pointer;transition:.15s;min-width:120px
+    }
+    .controls select:hover,.controls button:hover{background:var(--accent);color:#000}
+    .btn-secondary{border-color:var(--accent-2);color:#9fd2ff}
+    .btn-secondary:hover{background:var(--accent-2);color:#000}
+
+    .sheet{
+      background:var(--panel);border:2px solid var(--accent);border-radius:10px;
+      padding:16px;max-width:1100px;margin:0 auto 14px auto;
+      overflow-x:auto;
+    }
+    .row{display:grid;grid-template-columns:repeat(4,1fr);gap:0;margin:6px 0;min-width:720px;}
+    .bar{
+      min-height:78px;border-right:2px solid var(--barline);
+      display:flex;flex-direction:column;align-items:center;justify-content:center;
+      text-align:center;padding:6px 2px;cursor:pointer;transition:.12s;user-select:none
+    }
+    .bar:last-child{border-right:none}
+    .bar:hover{background:#222;transform:translateY(-1px)}
+    .chord{font-size:22px;font-weight:bold;color:var(--sym);line-height:1}
+    .roman{font-size:12px;color:var(--ink-dim);margin-top:4px}
+    .bebop{font-size:11px;color:#90caf9;margin-top:6px;opacity:.9}
+
+    .info{max-width:1100px;margin:0 auto 20px auto;color:#bbb;text-align:center;font-size:13px}
+    .footer-note{margin-top:6px;color:#888;font-size:11px}
+    .legend{max-width:1100px;margin:10px auto 16px auto;color:#ccc;text-align:center;font-size:12px}
+
+    /* Fretboard section */
+    .fretboard-section{
+      background:#1a1a1a;border:2px solid var(--accent);border-radius:8px;
+      padding:20px;max-width:1100px;margin:30px auto;
+      display:none;
+    }
+    .fretboard-title{text-align:center;color:var(--accent);margin-bottom:15px;font-size:18px;}
+    .fretboard{display:flex;flex-direction:column;gap:3px;background:#2a2a2a;padding:15px;border-radius:4px;overflow-x:auto;}
+    .string{display:flex;gap:2px;align-items:center;}
+    .string-label{width:30px;text-align:right;color:#888;font-size:14px;font-weight:bold;}
+    .fret{width:50px;height:35px;background:#3a3a3a;border:1px solid #555;
+      display:flex;align-items:center;justify-content:center;font-size:12px;color:#666;position:relative;}
+    .fret.highlighted{background:#66bb6a;color:#000;font-weight:bold;border-color:#88dd88;}
+    .fret.root{background:#ff9800;color:#000;font-weight:bold;border-color:#ffb733;}
+    .fret.sub{background:#42a5f5;color:#000;border-color:#64b5f6;}
+    .fret.dom{background:#ef5350;color:#000;border-color:#e57373;}
+    .fret.alt{background:#ffee58;color:#000;border-color:#fff176;}
+
+    @media print{
+      body{background:#fff;color:#000}
+      .controls{display:none}
+      .fretboard-section{display:none}
+      .sheet{border:none;background:#fff}
+      h1{font-size:24px;text-align:left;margin-bottom:6px;color:#000}
+      .bar{min-height:60px}
+      .chord{color:#000}
+      .roman{color:#222}
+    }
+  </style>
+</head>
+<body>
+  <h1>🎶 Bird Blues — Pro Lead Sheet & Fretboard Trainer</h1>
+
+  <div class="controls">
+    <label for="keySel">Key:</label>
+    <select id="keySel">
+      <option>C</option><option>F</option><option>Bb</option><option>Eb</option>
+      <option>Ab</option><option>Db</option><option>Gb</option><option>B</option>
+      <option>E</option><option>A</option><option>D</option><option>G</option>
+      <option>F#</option>
+    </select>
+    <button id="generateBtn">Generate Lead Sheet</button>
+    <button id="printBtn" class="btn-secondary">Print Lead Sheet</button>
+  </div>
+
+  <div class="legend">Click a bar to hear its root and view its chord tones on the fretboard.</div>
+
+  <div id="sheet" class="sheet"></div>
+  <div id="info" class="info"></div>
+
+  <div class="fretboard-section" id="fretboard-section">
+    <div class="fretboard-title" id="fretboard-title">Select a chord to view chord tones</div>
+    <div class="fretboard" id="fretboard"></div>
+  </div>
+
+<script>
+/* ————— THEORY CORE ————— */
+const chromaticSharp = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+const chromaticFlat  = ['C','Db','D','Eb','E','F','Gb','G','Ab','A','Bb','B'];
+const flatKeys = ['F','Bb','Eb','Ab','Db','Gb','Cb'];
+const romanSemitoneMap = {'I':0,'II':2,'III':4,'IV':5,'V':7,'VI':9,'VII':11,'♭II':1,'♭III':3,'♭V':6,'♭VI':8,'♭VII':10};
+
+const birdBluesRoman = [
+  [ {d:'I',q:'Δ7'}, {d:'♭III',q:'°7'}, {d:'II',q:'7'}, {d:'♭II',q:'7'} ],
+  [ {d:'IIm',q:'7'}, {d:'V',q:'7'}, {d:'I',q:'7'}, {d:'IV',q:'7'} ],
+  [ {d:'IVm',q:'7'}, {d:'♭VII',q:'7'}, {d:'III',q:'7'}, {d:'VI',q:'7'} ],
+  [ {d:'IIm',q:'7'}, {d:'V',q:'7'}, {d:'I',q:'Δ7'}, {d:'V',q:'7'} ]
+];
+
+const scaleSuggestions={'Δ7':'Major • Lydian • Bebop Major','7':'Mixolydian • Bebop Dominant • Altered','°7':'Diminished • Whole–Half','m7':'Dorian • Aeolian • Melodic Minor'};
+function useFlats(k){return flatKeys.includes(k);}
+function getChordSymbolObj(o,key){
+  const flats=useFlats(key),scale=flats?chromaticFlat:chromaticSharp;
+  const isMinor=o.d.endsWith('m'),deg=isMinor?o.d.slice(0,-1):o.d;
+  const rootIdx=scale.indexOf(key),intv=romanSemitoneMap[deg]||0;
+  const note=scale[(rootIdx+intv)%12];
+  const qual=isMinor&&(o.q==='7')?'m7':isMinor?('m'+o.q):o.q;
+  return {note,qual,chord:`${note}${qual}`,roman:`${deg}${qual}`,hint:scaleSuggestions[qual]||'—'};
+}
+
+/* ————— FRETBOARD ENGINE ————— */
+const stringNotes=['E','B','G','D','A','E'];const chromatic=['C','C#','D','Eb','E','F','F#','G','Ab','A','Bb','B'];const fretCount=12;
+function getNoteAtFret(s,f){const i=chromatic.indexOf(s);return chromatic[(i+f)%12];}
+function buildFretboard(){
+  const fb=document.getElementById('fretboard');fb.innerHTML='';
+  stringNotes.forEach(s=>{
+    const row=document.createElement('div');row.className='string';
+    const lab=document.createElement('div');lab.className='string-label';lab.textContent=s;row.appendChild(lab);
+    for(let f=0;f<=fretCount;f++){
+      const fr=document.createElement('div');fr.className='fret';fr.dataset.note=getNoteAtFret(s,f);if(f===0)fr.textContent=s;
+      row.appendChild(fr);
+    }fb.appendChild(row);
+  });
+}
+function clearFretboard(){document.querySelectorAll('.fret').forEach(fr=>fr.className='fret');}
+function showChordOnFretboard(chordNotes,root){
+  clearFretboard();
+  const normalized=chordNotes.map(n=>n.replace('b','b').replace('#','#'));
+  document.querySelectorAll('.fret').forEach(fr=>{
+    const note=fr.dataset.note;if(normalized.includes(note)){
+      fr.classList.add('highlighted');if(note===root)fr.classList.add('root');
+    }
+  });
+  document.getElementById('fretboard-section').style.display='block';
+  document.getElementById('fretboard-title').textContent=`Chord Tones for ${root}`;
+}
+function getChordTones(quality,root){
+  const intervals={'Δ7':[0,4,7,11],'7':[0,4,7,10],'m7':[0,3,7,10],'°7':[0,3,6,9]};
+  const idx=chromatic.indexOf(root);
+  return (intervals[quality]||[0,4,7]).map(i=>chromatic[(idx+i)%12]);
+}
+
+/* ————— AUDIO ————— */
+const audioCtx=new (window.AudioContext||window.webkitAudioContext)();
+const freqBase={'C':261.63,'C#':277.18,'Db':277.18,'D':293.66,'Eb':311.13,'E':329.63,'F':349.23,'F#':369.99,'Gb':369.99,'G':392,'Ab':415.3,'A':440,'Bb':466.16,'B':493.88};
+function playRoot(note){
+  try{const osc=audioCtx.createOscillator(),g=audioCtx.createGain();
+    osc.type='sine';osc.frequency.value=freqBase[note]||440;g.gain.value=0.001;
+    osc.connect(g);g.connect(audioCtx.destination);
+    const t=audioCtx.currentTime;g.gain.exponentialRampToValueAtTime(0.2,t+0.02);g.gain.exponentialRampToValueAtTime(0.0001,t+0.9);
+    osc.start(t);osc.stop(t+1);
+  }catch(e){console.log(e);}
+}
+
+/* ————— LEAD SHEET RENDER ————— */
+const keySel=document.getElementById('keySel'),sheet=document.getElementById('sheet'),info=document.getElementById('info');
+function buildChartData(k){return birdBluesRoman.map(r=>r.map(c=>getChordSymbolObj(c,k)));}
+function renderLeadSheet(k){
+  sheet.innerHTML='';
+  const data=buildChartData(k);
+  data.forEach(r=>{
+    const row=document.createElement('div');row.className='row';
+    r.forEach(c=>{
+      const bar=document.createElement('div');bar.className='bar';bar.title=`Scales: ${c.hint}`;
+      bar.innerHTML=`<div class='chord'>${c.chord}</div><div class='roman'>${c.roman}</div>`;
+      bar.addEventListener('click',()=>{
+        playRoot(c.note);
+        const tones=getChordTones(c.qual,c.note);
+        showChordOnFretboard(tones,c.note);
+      });
+      row.appendChild(bar);
+    });
+    sheet.appendChild(row);
+  });
+  info.innerHTML=`<strong>Bird Blues in ${k}</strong><br><span style=\"color:#888\">Click bars to visualize on fretboard and hear roots.</span>`;
+}
+renderLeadSheet('C');
+keySel.addEventListener('change',()=>renderLeadSheet(keySel.value));
+document.getElementById('generateBtn').addEventListener('click',()=>renderLeadSheet(keySel.value));
+document.getElementById('printBtn').addEventListener('click',()=>window.print());
+buildFretboard();
+</script>
+</body>
+</html>
